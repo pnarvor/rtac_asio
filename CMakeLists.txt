@@ -36,12 +36,21 @@ set(Boost_VERSION_STRING "${Boost_MAJOR_VERSION}.${Boost_MINOR_VERSION}.${Boost_
 message(STATUS "Boost location : ${Boost_INCLUDE_DIRS}")
 message(STATUS "Boost version  : ${Boost_VERSION_STRING}")
 
-add_library(rtac_asio INTERFACE)
-target_include_directories(rtac_asio INTERFACE
+list(APPEND rtac_asio_headers
+    include/rtac_asio/AsyncService.h
+    include/rtac_asio/StreamInterface.h
+    include/rtac_asio/SerialStream.h
+)
+
+add_library(rtac_asio SHARED
+    src/AsyncService.cpp
+    src/SerialStream.cpp
+)
+target_include_directories(rtac_asio PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
     $<INSTALL_INTERFACE:include>
 )
-target_link_libraries(rtac_asio INTERFACE
+target_link_libraries(rtac_asio PUBLIC
     Boost::system
     Boost::thread
 )
@@ -49,7 +58,7 @@ if(${Boost_VERSION_STRING} VERSION_LESS 1.66.0)
     target_compile_definitions(rtac_asio PRIVATE RTAC_BOOST_OLD_VERSION)
 endif()
 if(${CMAKE_VERSION} VERSION_GREATER 3.8.2)
-    target_compile_features(rtac_asio INTERFACE cxx_std_14)
+    target_compile_features(rtac_asio PUBLIC cxx_std_14)
 endif()
 
 add_subdirectory(tests)

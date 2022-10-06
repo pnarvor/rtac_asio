@@ -24,6 +24,7 @@
 
 
 list(APPEND test_files
+    src/serialstream01.cpp
 )
 
 foreach(filename ${test_files})
