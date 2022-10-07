@@ -39,11 +39,13 @@ message(STATUS "Boost version  : ${Boost_VERSION_STRING}")
 list(APPEND rtac_asio_headers
     include/rtac_asio/AsyncService.h
     include/rtac_asio/StreamInterface.h
+    include/rtac_asio/Stream.h
     include/rtac_asio/SerialStream.h
 )
 
 add_library(rtac_asio SHARED
     src/AsyncService.cpp
+    src/Stream.cpp
     src/SerialStream.cpp
 )
 target_include_directories(rtac_asio PUBLIC
