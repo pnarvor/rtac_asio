@@ -40,6 +40,23 @@ Stream::Stream(StreamInterface::ConstPtr stream) :
     lastWriteRequestId_(0)
 {}
 
+Stream::~Stream()
+{
+    stream_->service()->stop();
+}
+
+Stream::Ptr Stream::Create(StreamInterface::ConstPtr stream)
+{
+    return Ptr(new Stream(stream));
+}
+
+Stream::Ptr Stream::CreateSerial(const std::string& device,
+                                 const SerialStream::Parameters& params)
+{
+    return Ptr(new Stream(SerialStream::Create(AsyncService::Create(),
+                                               device, params)));
+}
+
 void Stream::async_read_some(std::size_t count,
                              uint8_t* data,
                              Callback callback) const

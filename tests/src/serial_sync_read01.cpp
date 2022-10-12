@@ -20,27 +20,25 @@ int main()
 {
     std::string data(1024, '\0');
 
-    auto service = AsyncService::Create();
+    //auto serial = Stream::Create(SerialStream::Create(service, "/dev/ttyACM0"));
+    auto serial = Stream::CreateSerial("/dev/ttyACM0");
 
-    Stream serial(SerialStream::Create(service, "/dev/ttyACM0"));
-
-    service->start();
     std::cout << "Started" << std::endl;
 
-    std::cout << "Read " << serial.read(msg.size() + 1, (uint8_t*)data.c_str(), 1000) << std::endl;
+    std::cout << "Read " << serial->read(msg.size(), (uint8_t*)data.c_str(), 1000)
+              << std::endl;
     
-    while(1) {
+    //while(1) {
+    for(int i = 0; i < 10; i++) {
         getchar();
         std::cout << "Write "
-                  << serial.write(msg.size(), (const uint8_t*)msg.c_str(), 1000)
+                  << serial->write(msg.size(), (const uint8_t*)msg.c_str(), 1000)
                   << std::endl << std::flush;
         std::cout << "Read "
-                  << serial.read(msg.size(), (uint8_t*)data.c_str()) 
+                  << serial->read(msg.size(), (uint8_t*)data.c_str()) 
                   << std::endl << std::flush;
         std::cout << "Data read : '" << data << "'" << std::endl;
     }
-
-    service->stop();
 
     return 0;
 }

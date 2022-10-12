@@ -29,6 +29,7 @@
 #ifndef _DEF_RTAC_ASIO_STREAM_H_
 #define _DEF_RTAC_ASIO_STREAM_H_
 
+#include <memory>
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
@@ -42,6 +43,9 @@ namespace rtac { namespace asio {
 class Stream
 {
     public:
+
+    using Ptr      = std::shared_ptr<Stream>;
+    using ConstPtr = std::shared_ptr<const Stream>;
 
     using ErrorCode = StreamInterface::ErrorCode;
     using Callback  = StreamInterface::Callback;
@@ -96,9 +100,15 @@ class Stream
     void write_timeout(std::size_t readRequest, const ErrorCode& err) const;
     void write_continue(const ErrorCode& err, std::size_t writtenCount) const;
     
+    Stream(StreamInterface::ConstPtr stream);
+
     public:
 
-    Stream(StreamInterface::ConstPtr stream);
+    ~Stream();
+
+    static Ptr Create(StreamInterface::ConstPtr stream);
+    static Ptr CreateSerial(const std::string& device,
+        const SerialStream::Parameters& params = SerialStream::Parameters());
 
     void async_read_some(std::size_t count, uint8_t* data,
                          Callback callback) const;

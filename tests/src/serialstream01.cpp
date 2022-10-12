@@ -14,7 +14,7 @@ void write_callback(const SerialStream::ErrorCode& err,
     std::cout << "Wrote data (" << writeCount << " bytes)." << std::endl;
 }
 
-void read_callback(Stream* serial,
+void read_callback(Stream::Ptr serial,
                    std::string* data,
                    const SerialStream::ErrorCode& err,
                    std::size_t count)
@@ -31,16 +31,16 @@ int main()
 
     auto service = AsyncService::Create();
 
-    Stream serial(SerialStream::Create(service, "/dev/ttyACM0"));
-    serial.async_read_some(data.size(), (uint8_t*)data.c_str(),
-                           std::bind(&read_callback, &serial, &data, _1, _2));
+    auto serial = Stream::Create(SerialStream::Create(service, "/dev/ttyACM0"));
+    serial->async_read_some(data.size(), (uint8_t*)data.c_str(),
+                           std::bind(&read_callback, serial, &data, _1, _2));
 
     service->start();
     
     std::string msg = "Hello there !\n";
     while(1) {
         getchar();
-        serial.async_write_some(msg.size() + 1,
+        serial->async_write_some(msg.size(),
                                 (const uint8_t*)msg.c_str(),
                                 &write_callback);
     }
