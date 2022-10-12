@@ -64,17 +64,15 @@ class SerialStream : public StreamInterface
         SerialPort::character_size characterSize;
         SerialPort::parity         parity;
         SerialPort::flow_control   flowControl;
-        SerialPort::stop_bits      stopBits;    
+        SerialPort::stop_bits      stopBits;
 
-        static Parameters defaults() {
-            Parameters res;
-            res.baudrate      = SerialPort::baud_rate(115200);
-            res.characterSize = SerialPort::character_size(8);
-            res.parity        = SerialPort::parity(SerialPort::parity::none);
-            res.flowControl   = SerialPort::flow_control(SerialPort::flow_control::none);
-            res.stopBits      = SerialPort::stop_bits(SerialPort::stop_bits::one);
-            return res;
-        }
+        Parameters(unsigned int bauds = 115200) :
+            baudrate(bauds),
+            characterSize(8),
+            parity(SerialPort::parity::none),
+            flowControl(SerialPort::flow_control::none),
+            stopBits(SerialPort::stop_bits::one)
+        {}
     };
 
     protected:
@@ -93,7 +91,7 @@ class SerialStream : public StreamInterface
 
     static Ptr Create(AsyncService::Ptr service,
                       const std::string& device,
-                      const Parameters& params = Parameters::defaults());
+                      const Parameters& params = Parameters());
 
     const std::string& device()     const { return device_;     }
     const Parameters&  parameters() const { return parameters_; }

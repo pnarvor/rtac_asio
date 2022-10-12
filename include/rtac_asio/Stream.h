@@ -35,6 +35,7 @@
 
 #include <rtac_asio/AsyncService.h>
 #include <rtac_asio/StreamInterface.h>
+#include <rtac_asio/SerialStream.h>
 
 namespace rtac { namespace asio {
 
