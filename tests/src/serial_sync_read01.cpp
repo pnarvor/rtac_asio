@@ -31,10 +31,12 @@ int main()
     
     while(1) {
         getchar();
-        serial.async_write(msg.size() + 1,
-                           (const uint8_t*)msg.c_str(),
-                           &write_callback);
-        std::cout << "Read " << serial.read(msg.size() + 1, (uint8_t*)data.c_str()) << std::endl;
+        std::cout << "Write "
+                  << serial.write(msg.size(), (const uint8_t*)msg.c_str(), 1000)
+                  << std::endl << std::flush;
+        std::cout << "Read "
+                  << serial.read(msg.size(), (uint8_t*)data.c_str()) 
+                  << std::endl << std::flush;
         std::cout << "Data read : '" << data << "'" << std::endl;
     }
 

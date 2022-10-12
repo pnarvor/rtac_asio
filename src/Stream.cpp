@@ -195,5 +195,28 @@ void Stream::read_continue(const ErrorCode& err, std::size_t writtenCount) const
     readRequest_.waiter.notify_all();
 }
 
+std::size_t Stream::write(std::size_t count, const uint8_t* data, int64_t timeoutMillis) const
+{
+    std::unique_lock<std::mutex> lock(writeRequest_.mutex);
+
+    writeRequest_.waiterNotified = false;
+    this->async_write(count, data,
+                     std::bind(&Stream::write_continue, this, _1, _2),
+                     timeoutMillis);
+    // This will wait until timeout is reached. Condition is false if timeout
+    // is reached. Return true if waiter was notified from another thread.
+    // The callback called is a protection from spurious wakes up.
+    // See std::condition_variable::wait_for documentation for more info.
+    writeRequest_.waiter.wait(lock, [&]{ return writeRequest_.waiterNotified; });
+
+    return writeRequest_.processed;
+}
+
+void Stream::write_continue(const ErrorCode& err, std::size_t writtenCount) const
+{
+    writeRequest_.waiterNotified = true;
+    writeRequest_.waiter.notify_all();
+}
+
 } //namespace asio
 } //namespace rtac

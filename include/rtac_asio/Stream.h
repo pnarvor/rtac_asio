@@ -93,6 +93,7 @@ class Stream
     void write_request_continue(std::size_t requestId,
                                 const ErrorCode& err, std::size_t writtenCount) const;
     void write_timeout(std::size_t readRequest, const ErrorCode& err) const;
+    void write_continue(const ErrorCode& err, std::size_t writtenCount) const;
     
     public:
 
@@ -108,9 +109,10 @@ class Stream
     void async_write(std::size_t count, const uint8_t* data, Callback callback,
                      unsigned int timeoutMillis = 0) const;
 
-    //std::size_t read(std::size_t count, uint8_t* data) const;
     std::size_t read(std::size_t count, uint8_t* data,
                      int64_t timeoutMillis = 0) const;
+    std::size_t write(std::size_t count, const uint8_t* data,
+                      int64_t timeoutMillis = 0) const;
     
 
 };
