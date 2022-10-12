@@ -61,13 +61,11 @@ class AsyncService
 
     ~AsyncService();
 
-    //IoServicePtr io_service();
-    //operator       IoService&()       { return *service_; }
-    //operator const IoService&() const { return *service_; }
           IoService& service()       { return *service_; }
     const IoService& service() const { return *service_; }
 
     bool is_running() const;
+    bool stopped() const { return service_->stopped(); }
     void start();
     void stop();
 };

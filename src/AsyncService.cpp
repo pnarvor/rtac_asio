@@ -41,24 +41,21 @@ AsyncService::~AsyncService()
     this->stop();
 }
 
-//AsyncService::IoServicePtr AsyncService::io_service()
-//{
-//    return service_;
-//}
-
 bool AsyncService::is_running() const
 {
-    return isRunning_;
+    return isRunning_ && !service_->stopped();
 }
 
 void AsyncService::start()
 {
     if(this->is_running()) return;
-    std::cout << "starting" << std::endl;
 
-    if(service_->stopped())
-        service_->reset();
+    if(thread_.joinable()) {
+        service_->stop();
+        thread_.join();
+    }
 
+    service_->reset();
     thread_ = std::thread(boost::bind(&boost::asio::io_service::run, service_));
     if(!thread_.joinable())
         throw std::runtime_error("Failed to start AsyncService");
