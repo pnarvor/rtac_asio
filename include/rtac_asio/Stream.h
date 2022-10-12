@@ -33,6 +33,7 @@
 #include <mutex>
 #include <condition_variable>
 
+#include <rtac_asio/AsyncService.h>
 #include <rtac_asio/StreamInterface.h>
 
 namespace rtac { namespace asio {
@@ -44,30 +45,31 @@ class Stream
     using ErrorCode = StreamInterface::ErrorCode;
     using Callback  = StreamInterface::Callback;
 
-    using Clock     = std::chrono::system_clock;
-    using TimePoint = std::chrono::time_point<Clock>;
-
-    static constexpr TimePoint NoTimeout = TimePoint
+    using Timer  = boost::asio::deadline_timer;
+    using Millis = boost::posix_time::milliseconds;
 
     struct Request {
+        uint64_t  requestId;
         int64_t   requestedSize;
         int64_t   processed;
         Callback  handler;
 
-        TimePoint timeoutDate;
+        Timer timer;
 
-        //std::mutex  mutex_;
-        //bool        waiterNotified_;
-        //std::condition_variable waiter_;
+        Request(AsyncService::Ptr service) :
+            timer(service->service())
+        {}
         
         int64_t remaining() const { return requestedSize - processed; }
     };
 
     struct ReadRequest : public Request {
+        ReadRequest(AsyncService::Ptr service) : Request(service) {}
         uint8_t* data;
     };
 
     struct WriteRequest : public Request {
+        WriteRequest(AsyncService::Ptr service) : Request(service) {}
         const uint8_t* data;
     };
 
@@ -76,10 +78,16 @@ class Stream
     StreamInterface::ConstPtr stream_;
 
     mutable ReadRequest  readRequest_;
+    mutable std::size_t  lastReadRequestId_;
     mutable WriteRequest writeRequest_;
+    mutable std::size_t  lastWriteRequestId_;
 
-    void read_request_continue (const ErrorCode& err, std::size_t readCount) const;
-    void write_request_continue(const ErrorCode& err, std::size_t writtenCount) const;
+    void read_request_continue(std::size_t requestId,
+                               const ErrorCode& err, std::size_t readCount) const;
+    void read_timeout(std::size_t readRequest, const ErrorCode& err) const;
+    void write_request_continue(std::size_t requestId,
+                                const ErrorCode& err, std::size_t writtenCount) const;
+    void write_timeout(std::size_t readRequest, const ErrorCode& err) const;
     
     public:
 
@@ -90,8 +98,10 @@ class Stream
     void async_write_some(std::size_t count, const uint8_t* data,
                           Callback callback) const;
 
-    void async_read (std::size_t count, uint8_t* data,       Callback callback) const;
-    void async_write(std::size_t count, const uint8_t* data, Callback callback) const;
+    void async_read(std::size_t count, uint8_t* data, Callback callback,
+                    unsigned int timeoutMillis = 0) const;
+    void async_write(std::size_t count, const uint8_t* data, Callback callback,
+                     unsigned int timeoutMillis = 0) const;
 
     //std::size_t read(std::size_t count, uint8_t* data) const;
     //std::size_t read(std::size_t count, uint8_t* data,

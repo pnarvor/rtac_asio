@@ -26,7 +26,8 @@ void read_callback(Stream* serial,
     //serial->async_read_some(data->size(), (uint8_t*)data->c_str(),
     //                        std::bind(&read_callback, serial, data, _1, _2));
     serial->async_read(msg.size() + 1, (uint8_t*)data->c_str(),
-                       std::bind(&read_callback, serial, data, _1, _2));
+                       std::bind(&read_callback, serial, data, _1, _2),
+                       1000);
 }
 
 int main()
@@ -42,8 +43,10 @@ int main()
                       std::bind(&read_callback, &serial, &data, _1, _2));
 
     service->start();
+    std::cout << "Started" << std::endl;
     
     while(1) {
+    //for(int i = 0; i < 5; i++) {
         getchar();
         //serial.async_write_some(msg.size() + 1,
         //                        (const uint8_t*)msg.c_str(),
@@ -51,7 +54,13 @@ int main()
         serial.async_write(msg.size() + 1,
                            (const uint8_t*)msg.c_str(),
                            &write_callback);
+        std::cout << "Service running ? : " << !service->stopped() << std::endl;
     }
+    serial.async_read(msg.size() + 1, (uint8_t*)data.c_str(),
+                      std::bind(&read_callback, &serial, &data, _1, _2));
+    
+    cout << "There " << endl;
+    getchar();
 
     service->stop();
 

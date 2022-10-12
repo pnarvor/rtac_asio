@@ -57,6 +57,8 @@ class StreamInterface
 
     public:
 
+    AsyncService::Ptr service() const { return service_; }
+
     virtual void async_read_some(std::size_t bufferSize,
                                  uint8_t*    buffer,
                                  Callback    callback) const = 0;
