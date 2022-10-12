@@ -56,6 +56,10 @@ class Stream
 
         Timer timer;
 
+        std::mutex mutex;
+        bool waiterNotified;
+        std::condition_variable waiter;
+
         Request(AsyncService::Ptr service) :
             timer(service->service())
         {}
@@ -85,6 +89,7 @@ class Stream
     void read_request_continue(std::size_t requestId,
                                const ErrorCode& err, std::size_t readCount) const;
     void read_timeout(std::size_t readRequest, const ErrorCode& err) const;
+    void read_continue(const ErrorCode& err, std::size_t writtenCount) const;
     void write_request_continue(std::size_t requestId,
                                 const ErrorCode& err, std::size_t writtenCount) const;
     void write_timeout(std::size_t readRequest, const ErrorCode& err) const;
@@ -104,9 +109,9 @@ class Stream
                      unsigned int timeoutMillis = 0) const;
 
     //std::size_t read(std::size_t count, uint8_t* data) const;
-    //std::size_t read(std::size_t count, uint8_t* data,
-    //                 int64_t timeoutMillis) const;
-    //
+    std::size_t read(std::size_t count, uint8_t* data,
+                     int64_t timeoutMillis = 0) const;
+    
 
 };
 

@@ -109,6 +109,8 @@ void Stream::read_timeout(std::size_t requestId, const ErrorCode& err) const
     if(readRequest_.requestId != requestId) {
         return;
     }
+    readRequest_.waiterNotified = true;
+    readRequest_.waiter.notify_all();
     //devalidating requestId, if callback happens it won't call the handler
     readRequest_.requestId = 0;
     std::cerr << "timeout reached" << std::endl;
@@ -166,27 +168,32 @@ void Stream::write_timeout(std::size_t requestId, const ErrorCode& err) const
 }
 
 
-// std::size_t Stream::read(std::size_t count, uint8_t* data) const
-// {
-// }
-// 
-// std::size_t Stream::read(std::size_t count, uint8_t* data, int64_t timeoutMillis) const
-// {
-//     std::unique_lock<std::mutex> lock(mutex_);
-// 
-//     waiterNotified_ = false;
-//     this->async_read(count, data);
-//     // This will wait until timeout is reached. Condition is false if timeout
-//     // is reached. Return true if waiter was notified from another thread.
-//     // The callback called is a protection from spurious wakes up.
-//     // See std::condition_variable::wait_for documentation for more info.
-//     if(!waiter_.wait_for(lock, std::chrono::milliseconds(timeoutMillis),
-//                          [&]{ return waiterNotified_; })
-//     {
-//         std::cerr << "Timeout reached on read" << std::endl;
-//     }
-//     return readRequest_.processed;
-// }
+//std::size_t Stream::read(std::size_t count, uint8_t* data) const
+//{
+//}
+
+std::size_t Stream::read(std::size_t count, uint8_t* data, int64_t timeoutMillis) const
+{
+    std::unique_lock<std::mutex> lock(readRequest_.mutex);
+
+    readRequest_.waiterNotified = false;
+    this->async_read(count, data,
+                     std::bind(&Stream::read_continue, this, _1, _2),
+                     timeoutMillis);
+    // This will wait until timeout is reached. Condition is false if timeout
+    // is reached. Return true if waiter was notified from another thread.
+    // The callback called is a protection from spurious wakes up.
+    // See std::condition_variable::wait_for documentation for more info.
+    readRequest_.waiter.wait(lock, [&]{ return readRequest_.waiterNotified; });
+
+    return readRequest_.processed;
+}
+
+void Stream::read_continue(const ErrorCode& err, std::size_t writtenCount) const
+{
+    readRequest_.waiterNotified = true;
+    readRequest_.waiter.notify_all();
+}
 
 } //namespace asio
 } //namespace rtac
