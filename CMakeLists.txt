@@ -40,12 +40,14 @@ list(APPEND rtac_asio_headers
     include/rtac_asio/AsyncService.h
     include/rtac_asio/StreamInterface.h
     include/rtac_asio/Stream.h
+    include/rtac_asio/StreamReader.h
     include/rtac_asio/SerialStream.h
 )
 
 add_library(rtac_asio SHARED
     src/AsyncService.cpp
     src/Stream.cpp
+    src/StreamReader.cpp
     src/SerialStream.cpp
 )
 target_include_directories(rtac_asio PUBLIC

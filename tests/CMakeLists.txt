@@ -24,9 +24,10 @@
 
 
 list(APPEND test_files
-    src/serialstream01.cpp
-    src/serialstream02.cpp
-    src/serial_sync_read01.cpp
+    # src/serialstream01.cpp
+    # src/serialstream02.cpp
+    # src/serial_sync_read01.cpp
+    src/serial_stream_reader01.cpp
 )
 
 foreach(filename ${test_files})
