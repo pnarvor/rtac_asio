@@ -64,6 +64,9 @@ void StreamWriter::async_write_some(std::size_t count,
                                     Callback callback)
 {
     stream_->async_write_some(count, data, callback);
+    if(!stream_->service()->is_running()) {
+        stream_->service()->start();
+    }
 }
 
 void StreamWriter::async_write(std::size_t count, const uint8_t* data,

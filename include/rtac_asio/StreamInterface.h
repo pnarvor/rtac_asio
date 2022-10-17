@@ -61,10 +61,10 @@ class StreamInterface
 
     virtual void async_read_some(std::size_t bufferSize,
                                  uint8_t*    buffer,
-                                 Callback    callback) const = 0;
+                                 Callback    callback) = 0;
     virtual void async_write_some(std::size_t    count,
                                   const uint8_t* data,
-                                  Callback       callback) const = 0;
+                                  Callback       callback) = 0;
     virtual void flush() = 0;
     virtual void reset() = 0;
 };

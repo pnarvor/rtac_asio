@@ -83,22 +83,16 @@ SerialStream::ErrorCode SerialStream::flush(FlushType flushType)
 
 void SerialStream::async_read_some(std::size_t bufferSize,
                                    uint8_t* buffer,
-                                   Callback callback) const
+                                   Callback callback)
 {
     serial_.async_read_some(boost::asio::buffer(buffer, bufferSize), callback);
-    if(!this->service()->is_running()) {
-        this->service()->start();
-    }
 }
 
 void SerialStream::async_write_some(std::size_t count,
                                     const uint8_t* data,
-                                    Callback callback) const
+                                    Callback callback)
 {
     serial_.async_write_some(boost::asio::buffer(data, count), callback);
-    if(!this->service()->is_running()) {
-        this->service()->start();
-    }
 }
 
 } //namespace asio

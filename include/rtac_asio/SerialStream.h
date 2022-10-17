@@ -103,10 +103,10 @@ class SerialStream : public StreamInterface
 
     void async_read_some(std::size_t bufferSize,
                          uint8_t*    buffer,
-                         Callback    callback) const;
+                         Callback    callback);
     void async_write_some(std::size_t    count,
                           const uint8_t* data,
-                          Callback       callback) const;
+                          Callback       callback);
 };
 
 } //namespace asio
