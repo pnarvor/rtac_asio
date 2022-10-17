@@ -56,7 +56,20 @@ class StreamReader
 
     StreamInterface::ConstPtr stream_;
 
+    unsigned int readCounter_;
+    unsigned int readId_;
+    std::size_t  requestedSize_;
+    std::size_t  processed_;
+    uint8_t*     dst_;
+    Callback     callback_;
+
+    Timer timer_;
+
     StreamReader(StreamInterface::ConstPtr stream);
+
+    void async_read_continue(unsigned int readId,
+                             const ErrorCode& err, std::size_t readCount);
+    void timeout_reached(unsigned int readId, const ErrorCode& err);
 
     public:
 
@@ -65,10 +78,10 @@ class StreamReader
     static Ptr Create(StreamInterface::ConstPtr stream);
 
     void async_read_some(std::size_t count, uint8_t* data,
-                         Callback callback) const;
+                         Callback callback);
 
-    //void async_read(std::size_t count, uint8_t* data, Callback callback,
-    //                unsigned int timeoutMillis = 0) const;
+    void async_read(std::size_t count, uint8_t* data, Callback callback,
+                    unsigned int timeoutMillis = 0);
 
     //std::size_t read(std::size_t count, uint8_t* data,
     //                 int64_t timeoutMillis = 0) const;

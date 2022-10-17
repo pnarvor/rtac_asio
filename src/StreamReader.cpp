@@ -33,7 +33,10 @@ using namespace std::placeholders;
 namespace rtac { namespace asio {
 
 StreamReader::StreamReader(StreamInterface::ConstPtr stream) :
-    stream_(stream)
+    stream_(stream),
+    readCounter_(0),
+    readId_(0),
+    timer_(stream_->service()->service())
 {}
 
 StreamReader::~StreamReader()
@@ -48,7 +51,7 @@ StreamReader::Ptr StreamReader::Create(StreamInterface::ConstPtr stream)
 
 void StreamReader::async_read_some(std::size_t count,
                                    uint8_t* data,
-                                   Callback callback) const
+                                   Callback callback)
 {
     stream_->async_read_some(count, data, callback);
     if(!stream_->service()->is_running()) {
@@ -56,5 +59,62 @@ void StreamReader::async_read_some(std::size_t count,
     }
 }
 
+void StreamReader::async_read(std::size_t count, uint8_t* data,
+                              Callback callback, unsigned int timeoutMillis)
+{
+    if(readId_ != 0) {
+        throw std::runtime_error("Another read was in progress : cannot call another read");
+    }
+
+    readCounter_++;
+    readId_        = readCounter_;
+    requestedSize_ = count;
+    processed_     = 0;
+    dst_           = data;
+    callback_      = callback;
+    
+    if(timeoutMillis > 0) {
+        timer_.expires_from_now(Millis(timeoutMillis));
+        timer_.async_wait(std::bind(&StreamReader::timeout_reached, this, readId_, _1));
+    }
+
+    this->async_read_some(requestedSize_, dst_,
+        std::bind(&StreamReader::async_read_continue, this, readId_, _1, _2));
+}
+
+void StreamReader::async_read_continue(unsigned int readId,
+                                       const ErrorCode& err,
+                                       std::size_t readCount)
+{
+    if(readId_ != readId) {
+        // probably a timeout was reached
+        return;
+    }
+
+    processed_ += readCount;
+    if(!err && processed_ < requestedSize_) {
+        this->async_read_some(requestedSize_ - processed_, dst_ + processed_,
+            std::bind(&StreamReader::async_read_continue, this, readId_, _1, _2));
+    }
+    else {
+        readId_ = 0;
+        timer_.cancel();
+        callback_(err, processed_);
+    }
+}
+
+void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
+{
+    if(readId != readId_) {
+        // timer abort probably failed
+        return;
+    }
+    
+    readId_ = 0;
+    callback_(err, processed_);
+}
+
 } //namespace asio
 } //namespace rtac
+
+
