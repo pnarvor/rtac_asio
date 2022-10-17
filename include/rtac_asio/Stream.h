@@ -36,6 +36,8 @@
 
 #include <rtac_asio/AsyncService.h>
 #include <rtac_asio/StreamInterface.h>
+#include <rtac_asio/StreamReader.h>
+#include <rtac_asio/StreamWriter.h>
 #include <rtac_asio/SerialStream.h>
 
 namespace rtac { namespace asio {
@@ -50,82 +52,38 @@ class Stream
     using ErrorCode = StreamInterface::ErrorCode;
     using Callback  = StreamInterface::Callback;
 
-    using Timer  = boost::asio::deadline_timer;
-    using Millis = boost::posix_time::milliseconds;
-
-    struct Request {
-        uint64_t  requestId;
-        int64_t   requestedSize;
-        int64_t   processed;
-        Callback  handler;
-
-        Timer timer;
-
-        std::mutex mutex;
-        bool waiterNotified;
-        std::condition_variable waiter;
-
-        Request(AsyncService::Ptr service) :
-            timer(service->service())
-        {}
-        
-        int64_t remaining() const { return requestedSize - processed; }
-    };
-
-    struct ReadRequest : public Request {
-        ReadRequest(AsyncService::Ptr service) : Request(service) {}
-        uint8_t* data;
-    };
-
-    struct WriteRequest : public Request {
-        WriteRequest(AsyncService::Ptr service) : Request(service) {}
-        const uint8_t* data;
-    };
-
     protected:
 
-    StreamInterface::ConstPtr stream_;
-
-    mutable ReadRequest  readRequest_;
-    mutable std::size_t  lastReadRequestId_;
-    mutable WriteRequest writeRequest_;
-    mutable std::size_t  lastWriteRequestId_;
-
-    void read_request_continue(std::size_t requestId,
-                               const ErrorCode& err, std::size_t readCount) const;
-    void read_timeout(std::size_t readRequest, const ErrorCode& err) const;
-    void read_continue(const ErrorCode& err, std::size_t writtenCount) const;
-    void write_request_continue(std::size_t requestId,
-                                const ErrorCode& err, std::size_t writtenCount) const;
-    void write_timeout(std::size_t readRequest, const ErrorCode& err) const;
-    void write_continue(const ErrorCode& err, std::size_t writtenCount) const;
+    StreamReader reader_;
+    StreamWriter writer_;
     
     Stream(StreamInterface::ConstPtr stream);
 
     public:
-
-    ~Stream();
 
     static Ptr Create(StreamInterface::ConstPtr stream);
     static Ptr CreateSerial(const std::string& device,
         const SerialStream::Parameters& params = SerialStream::Parameters());
 
     void async_read_some(std::size_t count, uint8_t* data,
-                         Callback callback) const;
+                         Callback callback);
     void async_write_some(std::size_t count, const uint8_t* data,
-                          Callback callback) const;
+                          Callback callback);
 
     void async_read(std::size_t count, uint8_t* data, Callback callback,
-                    unsigned int timeoutMillis = 0) const;
-    void async_write(std::size_t count, const uint8_t* data, Callback callback,
-                     unsigned int timeoutMillis = 0) const;
+                    unsigned int timeoutMillis = 0);
+    void async_write(std::size_t count, const uint8_t* data,
+                     Callback callback, unsigned int timeoutMillis = 0);
 
     std::size_t read(std::size_t count, uint8_t* data,
-                     int64_t timeoutMillis = 0) const;
+                     unsigned int timeoutMillis = 0);
     std::size_t write(std::size_t count, const uint8_t* data,
-                      int64_t timeoutMillis = 0) const;
-    
+                      unsigned int timeoutMillis = 0);
 
+    void async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+                          Callback callback, unsigned int timeoutMillis = 0);
+    std::size_t read_until(std::size_t maxSize, uint8_t* data,
+                           char delimiter, unsigned int timeoutMillis = 0);
 };
 
 } //namespace asio

@@ -3,10 +3,7 @@
 using namespace std;
 using namespace std::placeholders;
 
-#include <rtac_asio/AsyncService.h>
-#include <rtac_asio/SerialStream.h>
-#include <rtac_asio/StreamReader.h>
-#include <rtac_asio/StreamWriter.h>
+#include <rtac_asio/Stream.h>
 using namespace rtac::asio;
 
 std::string msg = "Hello there !\n";
@@ -21,26 +18,18 @@ int main()
 {
     std::string data(1024, '\0');
 
-    auto service = AsyncService::Create();
-    auto serial = SerialStream::Create(service, "/dev/ttyACM0");
-    auto reader = StreamReader::Create(serial);
-    auto writer = StreamWriter::Create(serial);
+    auto stream = Stream::CreateSerial("/dev/ttyACM0", 115200);
 
-    service->start();
     std::cout << "Started" << std::endl;
-    std::cout << "Service running ? : " << !service->stopped() << std::endl;
     
     while(1) {
         getchar();
-        writer->write(msg.size(), (const uint8_t*)msg.c_str(), 1000);
-        std::cout << "Service running ? : " << !service->stopped() << std::endl;
-        //std::cout << "Read " << reader->read(msg.size(), (uint8_t*)data.c_str())
+        stream->write(msg.size(), (const uint8_t*)msg.c_str(), 1000);
+        //std::cout << "Read " << stream->read(msg.size(), (uint8_t*)data.c_str())
         //          << " bytes." << std::endl;
-        std::cout << "Read " << reader->read(msg.size(), (uint8_t*)data.c_str(), 1000)
+        std::cout << "Read " << stream->read(msg.size(), (uint8_t*)data.c_str(), 1000)
                   << " bytes." << std::endl;
     }
-
-    service->stop();
 
     return 0;
 }

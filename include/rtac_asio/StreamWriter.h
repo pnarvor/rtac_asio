@@ -39,9 +39,13 @@
 
 namespace rtac { namespace asio {
 
+class Stream; // forward declaration for friend declaration
+
 class StreamWriter
 {
     public:
+
+    friend class Stream;
 
     using Ptr      = std::shared_ptr<StreamWriter>;
     using ConstPtr = std::shared_ptr<const StreamWriter>;

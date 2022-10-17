@@ -33,17 +33,9 @@ using namespace std::placeholders;
 namespace rtac { namespace asio {
 
 Stream::Stream(StreamInterface::ConstPtr stream) :
-    stream_(stream),
-    readRequest_(stream_->service()),
-    lastReadRequestId_(0),
-    writeRequest_(stream_->service()),
-    lastWriteRequestId_(0)
+    reader_(stream),
+    writer_(stream)
 {}
-
-Stream::~Stream()
-{
-    stream_->service()->stop();
-}
 
 Stream::Ptr Stream::Create(StreamInterface::ConstPtr stream)
 {
@@ -57,182 +49,52 @@ Stream::Ptr Stream::CreateSerial(const std::string& device,
                                                device, params)));
 }
 
-void Stream::async_read_some(std::size_t count,
-                             uint8_t* data,
-                             Callback callback) const
+void Stream::async_read_some(std::size_t count, uint8_t* data,
+                     Callback callback)
 {
-    stream_->async_read_some(count, data, callback);
-    if(!stream_->service()->is_running()) {
-        stream_->service()->start();
-    }
+    reader_.async_read_some(count, data, callback);
 }
 
-void Stream::async_write_some(std::size_t count,
-                              const uint8_t* data,
-                              Callback callback) const
+void Stream::async_write_some(std::size_t count, const uint8_t* data,
+                              Callback callback)
 {
-    stream_->async_write_some(count, data, callback);
-    if(!stream_->service()->is_running()) {
-        stream_->service()->start();
-    }
+    writer_.async_write_some(count, data, callback);
 }
 
 void Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
-                        unsigned int timeoutMillis) const
+                        unsigned int timeoutMillis)
 {
-    lastReadRequestId_++;
-    readRequest_.requestId     = lastReadRequestId_;
-    readRequest_.requestedSize = count;
-    readRequest_.processed     = 0;
-    readRequest_.data          = data;
-    readRequest_.handler       = callback;
-
-    if(timeoutMillis > 0) {
-        readRequest_.timer.expires_from_now(Millis(timeoutMillis));
-        readRequest_.timer.async_wait(
-            std::bind(&Stream::read_timeout, this, readRequest_.requestId, _1));
-    }
-
-    this->async_read_some(count, data,
-        std::bind(&Stream::read_request_continue, this, readRequest_.requestId, _1, _2));
+    reader_.async_read(count, data, callback, timeoutMillis);
 }
 
-void Stream::read_request_continue(std::size_t requestId,
-                                   const ErrorCode& err, std::size_t readCount) const
+void Stream::async_write(std::size_t count, const uint8_t* data,
+                         Callback callback, unsigned int timeoutMillis)
 {
-    if(readRequest_.requestId != lastReadRequestId_) {
-        // probably a timeout was reached. not calling handler
-        return;
-    }
-
-    readRequest_.processed += readCount;
-    if(!err && readRequest_.remaining() > 0) {
-        this->async_read_some(readRequest_.remaining(),
-                              readRequest_.data + readRequest_.processed,
-                              std::bind(&Stream::read_request_continue, 
-                              this, readRequest_.requestId, _1, _2));
-    }
-    else {
-        // calling handler and devalidating requestId in case a timeout was set.
-        readRequest_.requestId = 0;
-        readRequest_.timer.cancel();
-        readRequest_.handler(err, readRequest_.processed);
-    }
+    writer_.async_write(count, data, callback, timeoutMillis);
 }
 
-void Stream::read_timeout(std::size_t requestId, const ErrorCode& err) const
+std::size_t Stream::read(std::size_t count, uint8_t* data,
+                         unsigned int timeoutMillis)
 {
-    // checking if current readRequest consistent with this timeout
-    if(readRequest_.requestId != requestId) {
-        return;
-    }
-    readRequest_.waiterNotified = true;
-    readRequest_.waiter.notify_all();
-    //devalidating requestId, if callback happens it won't call the handler
-    readRequest_.requestId = 0;
-    std::cerr << "timeout reached" << std::endl;
+    return reader_.read(count, data, timeoutMillis);
 }
 
-void Stream::async_write(std::size_t count, const uint8_t* data, Callback callback,
-                         unsigned int timeoutMillis) const
+std::size_t Stream::write(std::size_t count, const uint8_t* data,
+                          unsigned int timeoutMillis)
 {
-    lastWriteRequestId_++;
-    writeRequest_.requestId     = lastWriteRequestId_;
-    writeRequest_.requestedSize = count;
-    writeRequest_.processed     = 0;
-    writeRequest_.data          = data;
-    writeRequest_.handler       = callback;
-
-    if(timeoutMillis > 0) {
-        writeRequest_.timer.expires_from_now(Millis(timeoutMillis));
-        writeRequest_.timer.async_wait(
-            std::bind(&Stream::read_timeout, this, writeRequest_.requestId, _1));
-    }
-    
-    this->async_write_some(count, data,
-        std::bind(&Stream::write_request_continue, this, writeRequest_.requestId, _1, _2));
+    return writer_.write(count, data, timeoutMillis);
 }
 
-void Stream::write_request_continue(std::size_t requestId, 
-                                    const ErrorCode& err, std::size_t writtenCount) const
+void Stream::async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+                              Callback callback, unsigned int timeoutMillis)
 {
-    if(writeRequest_.requestId != lastWriteRequestId_) {
-        // probably a timeout was reached. not calling handler
-        return;
-    }
-
-    writeRequest_.processed += writtenCount;
-    if(!err && writeRequest_.remaining() > 0) {
-        this->async_write_some(writeRequest_.remaining(),
-                               writeRequest_.data + writeRequest_.processed,
-                               std::bind(&Stream::write_request_continue,
-                               this, 0, _1, _2));
-    }
-    else {
-        writeRequest_.handler(err, writeRequest_.processed);
-    }
+    reader_.async_read_until(maxSize, data, delimiter, callback, timeoutMillis);
 }
 
-void Stream::write_timeout(std::size_t requestId, const ErrorCode& err) const
+std::size_t Stream::read_until(std::size_t maxSize, uint8_t* data,
+                               char delimiter, unsigned int timeoutMillis)
 {
-    // checking if current writeRequest consistent with this timeout
-    if(writeRequest_.requestId != requestId) {
-        return;
-    }
-    //devalidating requestId, if callback happens it won't call the handler
-    writeRequest_.requestId = 0;
-    std::cerr << "write timeout reached" << std::endl;
-}
-
-
-//std::size_t Stream::read(std::size_t count, uint8_t* data) const
-//{
-//}
-
-std::size_t Stream::read(std::size_t count, uint8_t* data, int64_t timeoutMillis) const
-{
-    std::unique_lock<std::mutex> lock(readRequest_.mutex);
-
-    readRequest_.waiterNotified = false;
-    this->async_read(count, data,
-                     std::bind(&Stream::read_continue, this, _1, _2),
-                     timeoutMillis);
-    // This will wait until timeout is reached. Condition is false if timeout
-    // is reached. Return true if waiter was notified from another thread.
-    // The callback called is a protection from spurious wakes up.
-    // See std::condition_variable::wait_for documentation for more info.
-    readRequest_.waiter.wait(lock, [&]{ return readRequest_.waiterNotified; });
-
-    return readRequest_.processed;
-}
-
-void Stream::read_continue(const ErrorCode& err, std::size_t writtenCount) const
-{
-    readRequest_.waiterNotified = true;
-    readRequest_.waiter.notify_all();
-}
-
-std::size_t Stream::write(std::size_t count, const uint8_t* data, int64_t timeoutMillis) const
-{
-    std::unique_lock<std::mutex> lock(writeRequest_.mutex);
-
-    writeRequest_.waiterNotified = false;
-    this->async_write(count, data,
-                     std::bind(&Stream::write_continue, this, _1, _2),
-                     timeoutMillis);
-    // This will wait until timeout is reached. Condition is false if timeout
-    // is reached. Return true if waiter was notified from another thread.
-    // The callback called is a protection from spurious wakes up.
-    // See std::condition_variable::wait_for documentation for more info.
-    writeRequest_.waiter.wait(lock, [&]{ return writeRequest_.waiterNotified; });
-
-    return writeRequest_.processed;
-}
-
-void Stream::write_continue(const ErrorCode& err, std::size_t writtenCount) const
-{
-    writeRequest_.waiterNotified = true;
-    writeRequest_.waiter.notify_all();
+    return reader_.read_until(maxSize, data, delimiter, timeoutMillis);
 }
 
 } //namespace asio
