@@ -101,10 +101,12 @@ class StreamReader
                     unsigned int timeoutMillis = 0);
 
     std::size_t read(std::size_t count, uint8_t* data,
-                     int64_t timeoutMillis = 0);
+                     unsigned int timeoutMillis = 0);
 
     void async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
                           Callback callback, unsigned int timeoutMillis = 0);
+    std::size_t read_until(std::size_t maxSize, uint8_t* data,
+                           char delimiter, unsigned int timeoutMillis = 0);
 };
 
 } //namespace asio

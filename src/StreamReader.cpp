@@ -132,7 +132,7 @@ void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
 }
 
 std::size_t StreamReader::read(std::size_t count, uint8_t* data,
-                               int64_t timeoutMillis)
+                               unsigned int timeoutMillis)
 {
     std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
 
@@ -211,6 +211,21 @@ void StreamReader::async_read_until_continue(unsigned int readId,
         timer_.cancel();
         callback_(err, processed_);
     }
+}
+
+std::size_t StreamReader::read_until(std::size_t maxSize, uint8_t* data,
+                                     char delimiter, unsigned int timeoutMillis)
+{
+    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
+
+    this->async_read_until(maxSize, data, delimiter,
+                           std::bind(&StreamReader::read_callback, this, _1, _2),
+                           timeoutMillis);
+
+    waiterNotified_ = false; // this protects against spurious wakeups.
+    waiter_.wait(lock, [&]{ return waiterNotified_; });
+
+    return processed_;
 }
 
 } //namespace asio
