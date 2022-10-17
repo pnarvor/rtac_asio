@@ -98,7 +98,8 @@ class SerialStream : public StreamInterface
 
     void reset(const Parameters& params);
     void reset();
-    ErrorCode flush(FlushType flushType = FlushBoth);
+    ErrorCode flush(FlushType flushType);
+    void flush() { this->flush(FlushBoth); }
 
     void async_read_some(std::size_t bufferSize,
                          uint8_t*    buffer,

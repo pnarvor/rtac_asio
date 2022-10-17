@@ -65,6 +65,8 @@ class StreamInterface
     virtual void async_write_some(std::size_t    count,
                                   const uint8_t* data,
                                   Callback       callback) const = 0;
+    virtual void flush() = 0;
+    virtual void reset() = 0;
 };
 
 } //namespace asio

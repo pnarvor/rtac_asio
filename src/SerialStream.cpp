@@ -63,7 +63,7 @@ void SerialStream::reset()
     serial_.set_option(parameters_.flowControl);
     serial_.set_option(parameters_.stopBits);
 
-    if(auto err = this->flush()) {
+    if(auto err = this->flush(FlushBoth)) {
         std::ostringstream oss;
         oss << "Error on serial port flushing : " << err;
         throw std::runtime_error(oss.str());
