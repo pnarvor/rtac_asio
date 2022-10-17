@@ -52,6 +52,8 @@ class StreamReader
     using Timer  = boost::asio::deadline_timer;
     using Millis = boost::posix_time::milliseconds;
 
+    using ReadBuffer = boost::asio::streambuf;
+
     protected:
 
     StreamInterface::ConstPtr stream_;
@@ -70,12 +72,21 @@ class StreamReader
     std::condition_variable waiter_;
     bool                    waiterNotified_;
 
+    // This buffer is necessary only because of the read_until primitive.
+    // However, to keep a continuous stream of data, it needs to be read from
+    // any read primitive. So it is read solely from the async_read_some method
+    // and "written" to solely by the async_read_until and read_until
+    // primitives.
+    ReadBuffer readBuffer_;
+
     StreamReader(StreamInterface::ConstPtr stream);
 
     void async_read_continue(unsigned int readId,
                              const ErrorCode& err, std::size_t readCount);
     void timeout_reached(unsigned int readId, const ErrorCode& err);
     void read_callback(const ErrorCode& err, std::size_t readCount);
+    void async_read_until_continue(unsigned int readId, char delimiter,
+                                   const ErrorCode& err, std::size_t readCount);
 
     public:
 
@@ -91,6 +102,9 @@ class StreamReader
 
     std::size_t read(std::size_t count, uint8_t* data,
                      int64_t timeoutMillis = 0);
+
+    void async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+                          Callback callback, unsigned int timeoutMillis = 0);
 };
 
 } //namespace asio
