@@ -29,6 +29,7 @@ list(APPEND test_files
     # src/serial_sync_read01.cpp
     src/serial_stream_reader01.cpp
     src/serial_stream_reader02.cpp
+    src/serial_stream_reader03.cpp
 )
 
 foreach(filename ${test_files})

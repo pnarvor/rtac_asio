@@ -65,11 +65,17 @@ class StreamReader
 
     Timer timer_;
 
+    // synchronization for synchronous read
+    std::mutex              mutex_;
+    std::condition_variable waiter_;
+    bool                    waiterNotified_;
+
     StreamReader(StreamInterface::ConstPtr stream);
 
     void async_read_continue(unsigned int readId,
                              const ErrorCode& err, std::size_t readCount);
     void timeout_reached(unsigned int readId, const ErrorCode& err);
+    void read_callback(const ErrorCode& err, std::size_t readCount);
 
     public:
 
@@ -83,8 +89,8 @@ class StreamReader
     void async_read(std::size_t count, uint8_t* data, Callback callback,
                     unsigned int timeoutMillis = 0);
 
-    //std::size_t read(std::size_t count, uint8_t* data,
-    //                 int64_t timeoutMillis = 0) const;
+    std::size_t read(std::size_t count, uint8_t* data,
+                     int64_t timeoutMillis = 0);
 };
 
 } //namespace asio
