@@ -24,11 +24,11 @@
 
 
 list(APPEND test_files
-    src/serial_stream_reader01.cpp
-    src/serial_stream_reader02.cpp
-    src/serial_stream_reader03.cpp
-    src/serial_stream_reader04.cpp
-    src/serial_stream_reader05.cpp
+    src/async_rw_some.cpp
+    src/async_rw.cpp
+    src/sync_rw.cpp
+    src/async_read_until.cpp
+    src/read_until.cpp
 )
 
 foreach(filename ${test_files})

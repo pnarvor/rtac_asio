@@ -26,6 +26,8 @@
 cmake_minimum_required(VERSION 3.6)
 project(rtac_asio VERSION 0.1)
 
+option(BUILD_TESTS "Build unit tests" ON)
+
 if(${CMAKE_VERSION} VERSION_LESS 3.8.2)
     message(WARNING "You are using a very old CMake version. This will work but please upgrade.")
     set(CMAKE_CXX_STANDARD 14)
@@ -67,4 +69,12 @@ if(${CMAKE_VERSION} VERSION_GREATER 3.8.2)
     target_compile_features(rtac_asio PUBLIC cxx_std_14)
 endif()
 
-add_subdirectory(tests)
+include(${CMAKE_CURRENT_SOURCE_DIR}/cmake/rtac_installation.cmake)
+rtac_install_target(rtac_asio
+    HEADER_FILES ${rtac_asio_headers}
+    ADDITIONAL_CONFIG_FILES cmake/rtac_installation.cmake
+)
+
+if(BUILD_TESTS)
+    add_subdirectory(tests)
+endif()
