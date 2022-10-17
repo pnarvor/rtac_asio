@@ -32,7 +32,7 @@ using namespace std::placeholders;
 
 namespace rtac { namespace asio {
 
-StreamReader::StreamReader(StreamInterface::ConstPtr stream) :
+StreamReader::StreamReader(StreamInterface::Ptr stream) :
     stream_(stream),
     readCounter_(0),
     readId_(0),
@@ -44,9 +44,19 @@ StreamReader::~StreamReader()
     stream_->service()->stop();
 }
 
-StreamReader::Ptr StreamReader::Create(StreamInterface::ConstPtr stream)
+StreamReader::Ptr StreamReader::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamReader(stream));
+}
+
+void StreamReader::flush()
+{
+    stream_->flush();
+}
+
+void StreamReader::reset()
+{
+    stream_->reset();
 }
 
 void StreamReader::async_read_some(std::size_t count,

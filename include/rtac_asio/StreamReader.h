@@ -60,7 +60,7 @@ class StreamReader
 
     protected:
 
-    StreamInterface::ConstPtr stream_;
+    StreamInterface::Ptr stream_;
 
     unsigned int readCounter_;
     unsigned int readId_;
@@ -83,7 +83,7 @@ class StreamReader
     // primitives.
     ReadBuffer readBuffer_;
 
-    StreamReader(StreamInterface::ConstPtr stream);
+    StreamReader(StreamInterface::Ptr stream);
 
     void async_read_continue(unsigned int readId,
                              const ErrorCode& err, std::size_t readCount);
@@ -96,7 +96,10 @@ class StreamReader
 
     ~StreamReader();
 
-    static Ptr Create(StreamInterface::ConstPtr stream);
+    static Ptr Create(StreamInterface::Ptr stream);
+
+    void flush();
+    void reset();
 
     void async_read_some(std::size_t count, uint8_t* data,
                          Callback callback);

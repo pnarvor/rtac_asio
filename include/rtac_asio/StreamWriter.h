@@ -58,7 +58,7 @@ class StreamWriter
 
     protected:
 
-    StreamInterface::ConstPtr stream_;
+    StreamInterface::Ptr stream_;
 
     unsigned int   writeCounter_;
     unsigned int   writeId_;
@@ -74,7 +74,7 @@ class StreamWriter
     std::condition_variable waiter_;
     bool                    waiterNotified_;
 
-    StreamWriter(StreamInterface::ConstPtr stream);
+    StreamWriter(StreamInterface::Ptr stream);
 
     void async_write_continue(unsigned int writeId,
                              const ErrorCode& err, std::size_t writtenCount);
@@ -85,7 +85,10 @@ class StreamWriter
 
     ~StreamWriter();
 
-    static Ptr Create(StreamInterface::ConstPtr stream);
+    static Ptr Create(StreamInterface::Ptr stream);
+
+    void flush();
+    void reset();
 
     void async_write_some(std::size_t count, const uint8_t* data,
                           Callback callback);

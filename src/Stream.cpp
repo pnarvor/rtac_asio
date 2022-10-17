@@ -32,12 +32,12 @@ using namespace std::placeholders;
 
 namespace rtac { namespace asio {
 
-Stream::Stream(StreamInterface::ConstPtr stream) :
+Stream::Stream(StreamInterface::Ptr stream) :
     reader_(stream),
     writer_(stream)
 {}
 
-Stream::Ptr Stream::Create(StreamInterface::ConstPtr stream)
+Stream::Ptr Stream::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new Stream(stream));
 }
@@ -47,6 +47,16 @@ Stream::Ptr Stream::CreateSerial(const std::string& device,
 {
     return Ptr(new Stream(SerialStream::Create(AsyncService::Create(),
                                                device, params)));
+}
+
+void Stream::flush()
+{
+    reader_.flush();
+}
+
+void Stream::reset()
+{
+    reader_.reset();
 }
 
 void Stream::async_read_some(std::size_t count, uint8_t* data,

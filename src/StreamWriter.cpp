@@ -32,7 +32,7 @@ using namespace std::placeholders;
 
 namespace rtac { namespace asio {
 
-StreamWriter::StreamWriter(StreamInterface::ConstPtr stream) :
+StreamWriter::StreamWriter(StreamInterface::Ptr stream) :
     stream_(stream),
     writeCounter_(0),
     writeId_(0),
@@ -44,9 +44,19 @@ StreamWriter::~StreamWriter()
     stream_->service()->stop();
 }
 
-StreamWriter::Ptr StreamWriter::Create(StreamInterface::ConstPtr stream)
+StreamWriter::Ptr StreamWriter::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamWriter(stream));
+}
+
+void StreamWriter::flush()
+{
+    stream_->flush();
+}
+
+void StreamWriter::reset()
+{
+    stream_->reset();
 }
 
 void StreamWriter::async_write_some(std::size_t count,

@@ -57,13 +57,16 @@ class Stream
     StreamReader reader_;
     StreamWriter writer_;
     
-    Stream(StreamInterface::ConstPtr stream);
+    Stream(StreamInterface::Ptr stream);
 
     public:
 
-    static Ptr Create(StreamInterface::ConstPtr stream);
+    static Ptr Create(StreamInterface::Ptr stream);
     static Ptr CreateSerial(const std::string& device,
         const SerialStream::Parameters& params = SerialStream::Parameters());
+
+    void flush();
+    void reset();
 
     void async_read_some(std::size_t count, uint8_t* data,
                          Callback callback);
