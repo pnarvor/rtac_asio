@@ -49,6 +49,13 @@ Stream::Ptr Stream::CreateSerial(const std::string& device,
                                                device, params)));
 }
 
+Stream::Ptr Stream::CreateUDPClient(const std::string& remoteIP,
+                                    uint16_t remotePort)
+{
+    return Ptr(new Stream(UDPClientStream::Create(AsyncService::Create(),
+                                                  remoteIP, remotePort)));
+}
+
 void Stream::flush()
 {
     reader_.flush();

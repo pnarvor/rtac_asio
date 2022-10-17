@@ -38,7 +38,9 @@
 #include <rtac_asio/StreamInterface.h>
 #include <rtac_asio/StreamReader.h>
 #include <rtac_asio/StreamWriter.h>
+
 #include <rtac_asio/SerialStream.h>
+#include <rtac_asio/UDPClientStream.h>
 
 namespace rtac { namespace asio {
 
@@ -64,6 +66,8 @@ class Stream
     static Ptr Create(StreamInterface::Ptr stream);
     static Ptr CreateSerial(const std::string& device,
         const SerialStream::Parameters& params = SerialStream::Parameters());
+    static Ptr CreateUDPClient(const std::string& remoteIP,
+                               uint16_t remotePort);
 
     void flush();
     void reset();
