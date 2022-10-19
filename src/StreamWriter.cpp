@@ -109,7 +109,8 @@ void StreamWriter::async_write_continue(unsigned int writeId,
     else {
         writeId_ = 0;
         timer_.cancel();
-        callback_(err, processed_);
+        //callback_(err, processed_);
+        stream_->service()->post(std::bind(callback_, err, processed_));
     }
 }
 
@@ -123,7 +124,8 @@ void StreamWriter::timeout_reached(unsigned int writeId, const ErrorCode& err)
     waiterNotified_ = true;
     waiter_.notify_all();
     writeId_ = 0;
-    callback_(err, processed_);
+    //callback_(err, processed_);
+    stream_->service()->post(std::bind(callback_, err, processed_));
 }
 
 std::size_t StreamWriter::write(std::size_t count, const uint8_t* data,

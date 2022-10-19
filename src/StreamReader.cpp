@@ -75,8 +75,9 @@ void StreamReader::async_read_some(std::size_t count,
         readBuffer_.consume(readCount);
         if(readCount >= count) {
             // readBuffer emptied.
-            // replace this with an asynchronous call to avoid potential deadlock
-            callback(ErrorCode(), readCount);
+            // Defering callback execution to avoid deadlock
+            stream_->service()->post(
+                std::bind(callback, ErrorCode(), readCount));
         }
     }
     else {
@@ -127,7 +128,8 @@ void StreamReader::async_read_continue(unsigned int readId,
     else {
         readId_ = 0;
         timer_.cancel();
-        callback_(err, processed_);
+        //callback_(err, processed_);
+        stream_->service()->post(std::bind(callback_, err, processed_));
     }
 }
 
@@ -141,7 +143,8 @@ void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
     waiterNotified_ = true;
     waiter_.notify_all();
     readId_ = 0;
-    callback_(err, processed_);
+    //callback_(err, processed_);
+    stream_->service()->post(std::bind(callback_, err, processed_));
 }
 
 std::size_t StreamReader::read(std::size_t count, uint8_t* data,
@@ -222,7 +225,8 @@ void StreamReader::async_read_until_continue(unsigned int readId,
     else {
         readId_ = 0;
         timer_.cancel();
-        callback_(err, processed_);
+        //callback_(err, processed_);
+        stream_->service()->post(std::bind(callback_, err, processed_));
     }
 }
 

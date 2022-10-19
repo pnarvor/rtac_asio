@@ -31,6 +31,8 @@ int main()
         std::cout << "Read " << stream->read(msg.size(), (uint8_t*)data.c_str(), 1000)
                   << " bytes." << std::endl;
     }
+    std::cout << "Read " << stream->read(msg.size(), (uint8_t*)data.c_str(), 1000)
+              << " bytes." << std::endl;
 
     return 0;
 }

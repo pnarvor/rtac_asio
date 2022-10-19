@@ -44,11 +44,12 @@ int main()
                              std::bind(&read_callback, stream, &data, _1, _2));
     std::cout << "Started" << std::endl;
     
+    //getchar();
     //while(1) {
     for(int i = 0; i < 10; i++) {
-        getchar();
         stream->async_write(msg.size(), (const uint8_t*)msg.c_str(),
                             &write_callback);
+        getchar();
     }
 
     return 0;
