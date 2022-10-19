@@ -49,9 +49,10 @@ class AsyncService
 
     protected:
     
-    IoServicePtr service_;
-    std::thread  thread_;
-    bool         isRunning_;
+    IoServicePtr                  service_;
+    std::unique_ptr<std::thread>  thread_;
+    bool                          isRunning_;
+
 
     AsyncService();
 
@@ -63,6 +64,8 @@ class AsyncService
 
           IoService& service()       { return *service_; }
     const IoService& service() const { return *service_; }
+
+    void run();
 
     bool is_running() const;
     bool stopped() const { return service_->stopped(); }

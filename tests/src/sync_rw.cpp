@@ -22,7 +22,8 @@ int main()
 
     std::cout << "Started" << std::endl;
     
-    while(1) {
+    //while(1) {
+    for(int i = 0; i < 5; i++) {
         getchar();
         stream->write(msg.size(), (const uint8_t*)msg.c_str(), 1000);
         //std::cout << "Read " << stream->read(msg.size(), (uint8_t*)data.c_str())

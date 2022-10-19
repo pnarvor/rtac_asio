@@ -28,55 +28,68 @@
 
 #include <rtac_asio/AsyncService.h>
 #include <boost/bind.hpp>
+#include <functional>
 
 namespace rtac { namespace asio {
 
 AsyncService::AsyncService() :
     service_(std::make_unique<IoService>()),
+    thread_(nullptr),
     isRunning_(false)
 {}
 
 AsyncService::~AsyncService()
 {
     this->stop();
+    if(thread_) {
+        thread_->join();
+    }
+    thread_ = nullptr;
+}
+
+void AsyncService::run()
+{
+    if(this->is_running()) return;
+    
+    isRunning_ = true;
+    try {
+        //service_->reset();
+        service_->restart();
+        service_->run();
+    }
+    catch(...) {
+        // This ensures isRunning_ is set to false if service::run() throws an
+        // exception. The exception is rethrown immediately
+        isRunning_ = false;
+        throw;
+    }
+    isRunning_ = false;
 }
 
 bool AsyncService::is_running() const
 {
-    return isRunning_ && !service_->stopped();
+    return isRunning_;
 }
 
 void AsyncService::start()
 {
     if(this->is_running()) return;
-
-    if(thread_.joinable()) {
-        service_->stop();
-        thread_.join();
+    if(thread_) {
+        thread_->join();
+        thread_ = nullptr; // this is to force deletion of the old thread
     }
-
-    service_->reset();
-    thread_ = std::thread(boost::bind(&boost::asio::io_service::run, service_));
-    if(!thread_.joinable())
-        throw std::runtime_error("Failed to start AsyncService");
-
-    isRunning_ = true;
+    thread_ = std::make_unique<std::thread>(std::bind(&AsyncService::run, this));
 }
 
 void AsyncService::stop()
 {
     if(!this->is_running()) return;
-
-    std::cout << "stopping" << std::endl;
     
     service_->stop();
-    thread_.join();
-    if(thread_.joinable())
-        throw std::runtime_error("Failed to stop AsyncService");
-
-    isRunning_ = false;
-
-    std::cout << "stopped" << std::endl;
+    if(thread_) {
+        thread_->join();
+    }
+    thread_ = nullptr;
 }
 
 } //namespace asio

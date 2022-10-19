@@ -46,7 +46,8 @@ int main()
 
     std::cout << "Started" << std::endl;
     
-    while(1) {
+    //while(1) {
+    for(int i = 0; i < 5; i++) {
         getchar();
         stream->async_write(msg.size(), (const uint8_t*)msg.c_str(),
                             &write_callback);
