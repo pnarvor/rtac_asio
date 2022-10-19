@@ -71,6 +71,8 @@ class AsyncService
     bool stopped() const { return service_->stopped(); }
     void start();
     void stop();
+    
+    void post(const std::function<void()>& function);
 };
 
 } //namespace asio

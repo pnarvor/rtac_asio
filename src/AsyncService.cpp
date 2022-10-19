@@ -92,5 +92,10 @@ void AsyncService::stop()
     thread_ = nullptr;
 }
 
+void AsyncService::post(const std::function<void()>& function)
+{
+    boost::asio::post(*service_, function);
+}
+
 } //namespace asio
 } //namespace rtac
