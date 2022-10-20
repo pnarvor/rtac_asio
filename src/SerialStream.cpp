@@ -37,9 +37,14 @@ SerialStream::SerialStream(AsyncService::Ptr service,
     StreamInterface(service),
     device_(device),
     parameters_(params),
-    serial_(service->service(), device_)
+    serial_(nullptr)
 {
     this->reset();
+}
+
+SerialStream::~SerialStream()
+{
+    this->close();
 }
 
 SerialStream::Ptr SerialStream::Create(AsyncService::Ptr service, 
@@ -47,6 +52,22 @@ SerialStream::Ptr SerialStream::Create(AsyncService::Ptr service,
                                        const Parameters& params)
 {
     return Ptr(new SerialStream(service, device, params));
+}
+
+void SerialStream::close()
+{
+    if(this->is_open()) {
+        std::cout << "Closing connection" << std::endl;
+        try {
+            serial_->cancel();
+            serial_->close();
+        }
+        catch(const std::exception& e) {
+            std::cerr << "Error closing serial " << device_
+                      << " : " << e.what() << std::endl;
+        }
+        serial_ = nullptr;
+    }
 }
 
 void SerialStream::reset(const Parameters& params)
@@ -57,11 +78,15 @@ void SerialStream::reset(const Parameters& params)
 
 void SerialStream::reset()
 {
-    serial_.set_option(parameters_.baudrate);
-    serial_.set_option(parameters_.characterSize);
-    serial_.set_option(parameters_.parity);
-    serial_.set_option(parameters_.flowControl);
-    serial_.set_option(parameters_.stopBits);
+    this->close();
+
+    serial_ = std::make_unique<SerialPort>(this->service()->service(), device_);
+
+    serial_->set_option(parameters_.baudrate);
+    serial_->set_option(parameters_.characterSize);
+    serial_->set_option(parameters_.parity);
+    serial_->set_option(parameters_.flowControl);
+    serial_->set_option(parameters_.stopBits);
 
     if(auto err = this->flush(FlushBoth)) {
         std::ostringstream oss;
@@ -72,7 +97,7 @@ void SerialStream::reset()
 
 SerialStream::ErrorCode SerialStream::flush(FlushType flushType)
 {
-    if(::tcflush(serial_.lowest_layer().native_handle(), flushType) == 0) {
+    if(::tcflush(serial_->lowest_layer().native_handle(), flushType) == 0) {
         return ErrorCode();
     }
     else {
@@ -81,18 +106,26 @@ SerialStream::ErrorCode SerialStream::flush(FlushType flushType)
     }
 }
 
+bool SerialStream::is_open() const
+{
+    if(serial_)
+        return serial_->is_open();
+    return false;
+}
+
+
 void SerialStream::async_read_some(std::size_t bufferSize,
                                    uint8_t* buffer,
                                    Callback callback)
 {
-    serial_.async_read_some(boost::asio::buffer(buffer, bufferSize), callback);
+    serial_->async_read_some(boost::asio::buffer(buffer, bufferSize), callback);
 }
 
 void SerialStream::async_write_some(std::size_t count,
                                     const uint8_t* data,
                                     Callback callback)
 {
-    serial_.async_write_some(boost::asio::buffer(data, count), callback);
+    serial_->async_write_some(boost::asio::buffer(data, count), callback);
 }
 
 } //namespace asio

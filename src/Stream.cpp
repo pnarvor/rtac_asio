@@ -56,6 +56,13 @@ Stream::Ptr Stream::CreateUDPClient(const std::string& remoteIP,
                                                   remoteIP, remotePort)));
 }
 
+Stream::Ptr Stream::CreateTCPClient(const std::string& remoteIP,
+                                    uint16_t remotePort)
+{
+    return Ptr(new Stream(TCPClientStream::Create(AsyncService::Create(),
+                                                  remoteIP, remotePort)));
+}
+
 void Stream::flush()
 {
     reader_.flush();

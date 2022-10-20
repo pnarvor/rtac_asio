@@ -43,6 +43,11 @@ TCPClientStream::TCPClientStream(AsyncService::Ptr service,
     this->reset(EndPoint(make_address(remoteIP), remotePort));
 }
 
+TCPClientStream::~TCPClientStream()
+{
+    this->close();
+}
+
 TCPClientStream::Ptr TCPClientStream::Create(AsyncService::Ptr service,
                                              const std::string& remoteIP,
                                              uint16_t remotePort)
@@ -52,11 +57,12 @@ TCPClientStream::Ptr TCPClientStream::Create(AsyncService::Ptr service,
 
 void TCPClientStream::close()
 {
-    if(socket_ && socket_->is_open()) {
+    if(this->is_open()) {
         std::cout << "Closing connection" << std::endl;
         try {
             ErrorCode err;
             socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, err);
+            socket_->cancel();
             if(err) {
                 std::cerr << "Error closing socket : '" << err << "'\n";
                 return;
@@ -88,6 +94,13 @@ void TCPClientStream::reset()
 void TCPClientStream::flush()
 {
     // for compatibility with StreamInterface
+}
+
+bool TCPClientStream::is_open() const
+{
+    if(socket_)
+        return socket_->is_open();
+    return false;
 }
 
 void TCPClientStream::async_read_some(std::size_t bufferSize,

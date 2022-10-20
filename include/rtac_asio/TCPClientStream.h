@@ -78,6 +78,8 @@ class TCPClientStream : public StreamInterface
 
     public:
 
+    ~TCPClientStream();
+
     static Ptr Create(AsyncService::Ptr service,
                       const std::string& remoteIP,
                       uint16_t remotePort);
@@ -88,6 +90,7 @@ class TCPClientStream : public StreamInterface
     void reset(const EndPoint& remote);
     void reset();
     void flush();
+    bool is_open() const;
 
     void async_read_some(std::size_t bufferSize,
                          uint8_t*    buffer,

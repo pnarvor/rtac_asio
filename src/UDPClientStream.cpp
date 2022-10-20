@@ -39,12 +39,17 @@ UDPClientStream::UDPClientStream(AsyncService::Ptr service,
                                  uint16_t remotePort,
                                  std::size_t bufferSize) :
     StreamInterface(service),
-    socket_(service->service()),
+    socket_(nullptr),
     buffer_(bufferSize),
     bufferBegin_(buffer_.begin()),
     bufferEnd_(buffer_.begin())
 {
     this->reset(EndPoint(make_address(remoteIP), remotePort));
+}
+
+UDPClientStream::~UDPClientStream()
+{
+    this->close();
 }
 
 UDPClientStream::Ptr UDPClientStream::Create(AsyncService::Ptr service,
@@ -55,6 +60,27 @@ UDPClientStream::Ptr UDPClientStream::Create(AsyncService::Ptr service,
     return Ptr(new UDPClientStream(service, remoteIP, remotePort, bufferSize));
 }
 
+void UDPClientStream::close()
+{
+    if(this->is_open()) {
+        std::cout << "Closing connection" << std::endl;
+        try {
+            ErrorCode err;
+            socket_->shutdown(boost::asio::ip::tcp::socket::shutdown_both, err);
+            socket_->cancel();
+            if(err) {
+                std::cerr << "Error closing socket : '" << err << "'\n";
+                return;
+            }
+            socket_->close();
+        }
+        catch(const std::exception& e) {
+            std::cerr << "Error closing connection : " << e.what() << std::endl;
+        }
+        socket_ = nullptr;
+    }
+}
+
 void UDPClientStream::reset(const EndPoint& remote)
 {
     remote_ = remote;
@@ -63,18 +89,24 @@ void UDPClientStream::reset(const EndPoint& remote)
 
 void UDPClientStream::reset()
 {
-    if(socket_.is_open()) {
-        socket_.close();
-    }
-    
+    this->close();
     this->flush();
-    socket_.connect(remote_);
+    
+    socket_ = std::make_unique<Socket>(this->service()->service());
+    socket_->connect(remote_);
 }
 
 void UDPClientStream::flush()
 {
     bufferBegin_ = buffer_.begin();
     bufferEnd_   = buffer_.begin();
+}
+
+bool UDPClientStream::is_open() const
+{
+    if(socket_)
+        return socket_->is_open();
+    return false;
 }
 
 void UDPClientStream::async_read_some(std::size_t bufferSize,
@@ -97,7 +129,7 @@ void UDPClientStream::async_read_some(std::size_t bufferSize,
     }
     else {
         // called only when buffer empty
-        socket_.async_receive(boost::asio::buffer(buffer_.data(), buffer_.size()),
+        socket_->async_receive(boost::asio::buffer(buffer_.data(), buffer_.size()),
             std::bind(&UDPClientStream::receive_continue, this,
                 bufferSize, buffer, callback, _1, _2));
     }
@@ -122,7 +154,7 @@ void UDPClientStream::async_write_some(std::size_t count,
                                        const uint8_t* data,
                                        Callback callback)
 {
-    socket_.async_send(boost::asio::buffer(data, count), callback);
+    socket_->async_send(boost::asio::buffer(data, count), callback);
 }
 
 } //namespace asio

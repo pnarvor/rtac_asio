@@ -39,11 +39,6 @@ StreamReader::StreamReader(StreamInterface::Ptr stream) :
     timer_(stream_->service()->service())
 {}
 
-StreamReader::~StreamReader()
-{
-    stream_->service()->stop();
-}
-
 StreamReader::Ptr StreamReader::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamReader(stream));

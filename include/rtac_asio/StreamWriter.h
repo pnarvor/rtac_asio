@@ -83,9 +83,10 @@ class StreamWriter
 
     public:
 
-    ~StreamWriter();
-
     static Ptr Create(StreamInterface::Ptr stream);
+
+    StreamInterface::Ptr      stream()       { return stream_; }
+    StreamInterface::ConstPtr stream() const { return stream_; }
 
     void flush();
     void reset();

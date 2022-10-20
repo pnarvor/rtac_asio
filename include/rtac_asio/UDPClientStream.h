@@ -64,7 +64,7 @@ class UDPClientStream : public StreamInterface
 
     protected:
 
-    Socket                         socket_;
+    std::unique_ptr<Socket>        socket_;
     EndPoint                       remote_;
     std::vector<uint8_t>           buffer_;
     std::vector<uint8_t>::iterator bufferBegin_;
@@ -83,6 +83,8 @@ class UDPClientStream : public StreamInterface
 
     public:
 
+    ~UDPClientStream();
+
     static Ptr Create(AsyncService::Ptr service,
                       const std::string& remoteIP,
                       uint16_t remotePort,
@@ -91,9 +93,11 @@ class UDPClientStream : public StreamInterface
     const EndPoint& remote() const { return remote_; }
     std::size_t available() const { return bufferEnd_ - bufferBegin_; }
 
+    void close();
     void reset(const EndPoint& remote);
     void reset();
     void flush();
+    bool is_open() const;
 
     void async_read_some(std::size_t bufferSize,
                          uint8_t*    buffer,

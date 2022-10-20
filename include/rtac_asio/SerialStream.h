@@ -80,14 +80,15 @@ class SerialStream : public StreamInterface
     std::string device_;
     Parameters  parameters_;
 
-    mutable SerialPort  serial_;
-    //ReadBuffer  readBuffer_;
+    std::unique_ptr<SerialPort> serial_;
 
     SerialStream(AsyncService::Ptr service,
                  const std::string& device,
                  const Parameters& params);
 
     public:
+
+    ~SerialStream();
 
     static Ptr Create(AsyncService::Ptr service,
                       const std::string& device,
@@ -96,10 +97,12 @@ class SerialStream : public StreamInterface
     const std::string& device()     const { return device_;     }
     const Parameters&  parameters() const { return parameters_; }
 
+    void close();
     void reset(const Parameters& params);
     void reset();
     ErrorCode flush(FlushType flushType);
     void flush() { this->flush(FlushBoth); }
+    bool is_open() const;
 
     void async_read_some(std::size_t bufferSize,
                          uint8_t*    buffer,

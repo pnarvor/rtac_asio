@@ -94,9 +94,10 @@ class StreamReader
 
     public:
 
-    ~StreamReader();
-
     static Ptr Create(StreamInterface::Ptr stream);
+
+    StreamInterface::Ptr      stream()       { return stream_; }
+    StreamInterface::ConstPtr stream() const { return stream_; }
 
     void flush();
     void reset();

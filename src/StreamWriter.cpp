@@ -39,11 +39,6 @@ StreamWriter::StreamWriter(StreamInterface::Ptr stream) :
     timer_(stream_->service()->service())
 {}
 
-StreamWriter::~StreamWriter()
-{
-    stream_->service()->stop();
-}
-
 StreamWriter::Ptr StreamWriter::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamWriter(stream));

@@ -53,8 +53,7 @@ void read_callback(Stream::Ptr stream,
 
 int main()
 {
-    auto stream = Stream::Create(TCPClientStream::Create(
-        AsyncService::Create(), "127.0.0.1", 8888));
+    auto stream = Stream::CreateTCPClient("127.0.0.1", 8888);
 
     getchar();
 

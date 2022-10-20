@@ -41,6 +41,7 @@
 
 #include <rtac_asio/SerialStream.h>
 #include <rtac_asio/UDPClientStream.h>
+#include <rtac_asio/TCPClientStream.h>
 
 namespace rtac { namespace asio {
 
@@ -68,9 +69,11 @@ class Stream
         const SerialStream::Parameters& params = SerialStream::Parameters());
     static Ptr CreateUDPClient(const std::string& remoteIP,
                                uint16_t remotePort);
-
+    static Ptr CreateTCPClient(const std::string& remoteIP,
+                               uint16_t remotePort);
     void flush();
     void reset();
+    bool is_open() const { return reader_.stream()->is_open(); }
 
     void async_read_some(std::size_t count, uint8_t* data,
                          Callback callback);

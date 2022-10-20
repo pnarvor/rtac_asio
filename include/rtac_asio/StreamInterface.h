@@ -67,6 +67,7 @@ class StreamInterface
                                   Callback       callback) = 0;
     virtual void flush() = 0;
     virtual void reset() = 0;
+    virtual bool is_open() const { return true; }
 };
 
 } //namespace asio
