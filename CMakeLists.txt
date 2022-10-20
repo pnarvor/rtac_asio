@@ -47,6 +47,7 @@ list(APPEND rtac_asio_headers
     include/rtac_asio/SerialStream.h
     include/rtac_asio/ip_utils.h
     include/rtac_asio/UDPClientStream.h
+    include/rtac_asio/TCPClientStream.h
 )
 
 add_library(rtac_asio SHARED
@@ -57,6 +58,7 @@ add_library(rtac_asio SHARED
     src/SerialStream.cpp
     src/ip_utils.cpp
     src/UDPClientStream.cpp
+    src/TCPClientStream.cpp
 )
 target_include_directories(rtac_asio PUBLIC
     $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>

@@ -29,6 +29,7 @@ list(APPEND test_files
     src/sync_rw.cpp
     src/async_read_until.cpp
     src/read_until.cpp
+    src/tcp_client01.cpp
 )
 
 foreach(filename ${test_files})
