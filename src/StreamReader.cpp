@@ -39,6 +39,11 @@ StreamReader::StreamReader(StreamInterface::Ptr stream) :
     timer_(stream_->service()->service())
 {}
 
+StreamReader::~StreamReader()
+{
+    this->disable_dump();
+}
+
 StreamReader::Ptr StreamReader::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamReader(stream));
@@ -76,7 +81,14 @@ void StreamReader::async_read_some(std::size_t count,
         }
     }
     else {
-        stream_->async_read_some(count, data, callback);
+        if(!this->dump_enabled()) {
+            stream_->async_read_some(count, data, callback);
+        }
+        else {
+            std::cout << "There !" << std::endl;
+            stream_->async_read_some(count, data,
+                std::bind(&StreamReader::dump_callback, this, callback, data, _1, _2));
+        }
         if(!stream_->service()->is_running()) {
             stream_->service()->start();
         }
@@ -238,6 +250,45 @@ std::size_t StreamReader::read_until(std::size_t maxSize, uint8_t* data,
     waiter_.wait(lock, [&]{ return waiterNotified_; });
 
     return processed_;
+}
+
+void StreamReader::enable_dump(const std::string& filename, bool appendMode)
+{
+    if(rxDump_.is_open()) {
+        std::cerr << "rx dump already enabled. Close before reopen." << std::endl;
+        return;
+    }
+    
+    auto mode = std::ofstream::out;
+    if(appendMode) {
+        mode = std::ofstream::app;
+    }
+    rxDump_.open(filename, mode);
+    if(!rxDump_.is_open()) {
+        std::cerr << "rtac_asio : Could not open file "
+                  << filename << " for writing." << std::endl;
+    }
+}
+
+void StreamReader::disable_dump()
+{
+    if(rxDump_.is_open()) {
+        rxDump_.close();
+    }
+}
+
+void StreamReader::dump_callback(Callback callback, uint8_t* data,
+                                 const ErrorCode& err, std::size_t readCount)
+{
+    if(!err && this->dump_enabled()) {
+        std::cout << "HEre !" << std::endl;
+        for(std::size_t i = 0; i < readCount; i++) {
+            std::cout << data[i];
+            rxDump_ << data[i];
+        }
+        rxDump_.flush();
+    }
+    callback(err, readCount);
 }
 
 } //namespace asio

@@ -94,6 +94,10 @@ class Stream
                           Callback callback, unsigned int timeoutMillis = 0);
     std::size_t read_until(std::size_t maxSize, uint8_t* data,
                            char delimiter, unsigned int timeoutMillis = 0);
+
+    void enable_io_dump(const std::string& rxFile = "asio_rx.dump",
+                        const std::string& txFile = "asio_tx.dump",
+                        bool appendMode = false);
 };
 
 } //namespace asio

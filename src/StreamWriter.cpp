@@ -39,6 +39,11 @@ StreamWriter::StreamWriter(StreamInterface::Ptr stream) :
     timer_(stream_->service()->service())
 {}
 
+StreamWriter::~StreamWriter()
+{
+    this->disable_dump();
+}
+
 StreamWriter::Ptr StreamWriter::Create(StreamInterface::Ptr stream)
 {
     return Ptr(new StreamWriter(stream));
@@ -58,7 +63,14 @@ void StreamWriter::async_write_some(std::size_t count,
                                     const uint8_t* data,
                                     Callback callback)
 {
-    stream_->async_write_some(count, data, callback);
+    if(!this->dump_enabled()) {
+        stream_->async_write_some(count, data, callback);
+    }
+    else {
+        stream_->async_write_some(count, data,
+            std::bind(&StreamWriter::dump_callback, this,
+                      callback, data, _1, _2));
+    }
     if(!stream_->service()->is_running()) {
         stream_->service()->start();
     }
@@ -141,6 +153,43 @@ void StreamWriter::write_callback(const ErrorCode& err, std::size_t writtenCount
 {
     waiterNotified_ = true;
     waiter_.notify_all();
+}
+
+void StreamWriter::enable_dump(const std::string& filename, bool appendMode)
+{
+    if(txDump_.is_open()) {
+        std::cerr << "tx dump already enabled. Close before reopen." << std::endl;
+        return;
+    }
+    
+    auto mode = std::ofstream::out;
+    if(appendMode) {
+        mode = std::ofstream::app;
+    }
+    txDump_.open(filename, mode);
+    if(!txDump_.is_open()) {
+        std::cerr << "rtac_asio : Could not open file "
+                  << filename << " for writing." << std::endl;
+    }
+}
+
+void StreamWriter::disable_dump()
+{
+    if(txDump_.is_open()) {
+        txDump_.close();
+    }
+}
+
+void StreamWriter::dump_callback(Callback callback, const uint8_t* data,
+                                 const ErrorCode& err, std::size_t writtenCount)
+{
+    if(!err && this->dump_enabled()) {
+        for(std::size_t i = 0; i < writtenCount; i++) {
+            txDump_ << data[i];
+        }
+        txDump_.flush();
+    }
+    callback(err, writtenCount);
 }
 
 } //namespace asio

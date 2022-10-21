@@ -33,6 +33,7 @@ int main()
     std::string data(1024, '\0');
 
     auto stream = Stream::CreateSerial("/dev/ttyACM0", 115200);
+    stream->enable_io_dump();
 
     stream->async_read_some(data.size(), (uint8_t*)data.c_str(),
                             std::bind(&read_callback, stream, &data, _1, _2));

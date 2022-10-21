@@ -33,6 +33,7 @@
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
+#include <fstream>
 
 #include <rtac_asio/AsyncService.h>
 #include <rtac_asio/StreamInterface.h>
@@ -83,6 +84,9 @@ class StreamReader
     // primitives.
     ReadBuffer readBuffer_;
 
+    //output file for debug / record
+    std::ofstream rxDump_;
+
     StreamReader(StreamInterface::Ptr stream);
 
     void async_read_continue(unsigned int readId,
@@ -91,8 +95,12 @@ class StreamReader
     void read_callback(const ErrorCode& err, std::size_t readCount);
     void async_read_until_continue(unsigned int readId, char delimiter,
                                    const ErrorCode& err, std::size_t readCount);
+    void dump_callback(Callback callback, uint8_t* data,
+                       const ErrorCode& err, std::size_t readCount);
 
     public:
+
+    ~StreamReader();
 
     static Ptr Create(StreamInterface::Ptr stream);
 
@@ -115,6 +123,11 @@ class StreamReader
                           Callback callback, unsigned int timeoutMillis = 0);
     std::size_t read_until(std::size_t maxSize, uint8_t* data,
                            char delimiter, unsigned int timeoutMillis = 0);
+
+    void enable_dump(const std::string& filename="asio_rx.dump",
+                     bool appendMode = false);
+    void disable_dump();
+    bool dump_enabled() const { return rxDump_.is_open(); }
 };
 
 } //namespace asio

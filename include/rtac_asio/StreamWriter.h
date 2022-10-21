@@ -33,6 +33,7 @@
 #include <chrono>
 #include <mutex>
 #include <condition_variable>
+#include <fstream>
 
 #include <rtac_asio/AsyncService.h>
 #include <rtac_asio/StreamInterface.h>
@@ -74,14 +75,21 @@ class StreamWriter
     std::condition_variable waiter_;
     bool                    waiterNotified_;
 
+    //output file for debug / record
+    std::ofstream txDump_;
+
     StreamWriter(StreamInterface::Ptr stream);
 
     void async_write_continue(unsigned int writeId,
                              const ErrorCode& err, std::size_t writtenCount);
     void timeout_reached(unsigned int writeId, const ErrorCode& err);
     void write_callback(const ErrorCode& err, std::size_t writtenCount);
+    void dump_callback(Callback callback, const uint8_t* data,
+                       const ErrorCode& err, std::size_t writtenCount);
 
     public:
+
+    ~StreamWriter();
 
     static Ptr Create(StreamInterface::Ptr stream);
 
@@ -99,6 +107,11 @@ class StreamWriter
 
     std::size_t write(std::size_t count, const uint8_t* data,
                       unsigned int timeoutMillis = 0);
+
+    void enable_dump(const std::string& filename="asio_tx.dump",
+                     bool appendMode = false);
+    void disable_dump();
+    bool dump_enabled() const { return txDump_.is_open(); }
 };
 
 } //namespace asio

@@ -121,5 +121,12 @@ std::size_t Stream::read_until(std::size_t maxSize, uint8_t* data,
     return reader_.read_until(maxSize, data, delimiter, timeoutMillis);
 }
 
+void Stream::enable_io_dump(const std::string& rxFile, const std::string& txFile,
+                            bool appendMode)
+{
+    reader_.enable_dump(rxFile, appendMode);
+    writer_.enable_dump(txFile, appendMode);
+}
+
 } //namespace asio
 } //namespace rtac
