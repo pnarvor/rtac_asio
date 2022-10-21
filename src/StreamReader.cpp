@@ -90,7 +90,7 @@ void StreamReader::dump_callback(Callback callback, uint8_t* data,
 {
     if(!err && this->dump_enabled()) {
         for(std::size_t i = 0; i < readCount; i++) {
-            std::cout << data[i];
+            //std::cout << data[i];
             rxDump_ << data[i];
         }
         rxDump_.flush();
@@ -187,7 +187,8 @@ void StreamReader::do_read_some(std::size_t count, uint8_t* data,
             readCount++;
             c = is.get();
         }
-        readBuffer_.consume(readCount);
+        //readBuffer_.consume(readCount); // must not use this when using streams
+                                          // @#(&*@^$*@$% boost doc
         stream_->service()->post(std::bind(callback, ErrorCode(), readCount));
     }
     else {
@@ -298,17 +299,19 @@ bool StreamReader::async_read_until(std::size_t maxSize, uint8_t* data, char del
             processed_++;
             if(c == delimiter || processed_ >= requestedSize_) {
                 // delimiter found or maximum user buffer size reached
-                readBuffer_.consume(processed_);
+                //readBuffer_.consume(processed_); // must not use this when using streams
+                                                   // @#(&*@^$*@$% boost doc
                 this->finish_read(ErrorCode());
                 return true;
             }
             c = is.get();
         }
-        readBuffer_.consume(processed_);
+        //readBuffer_.consume(processed_); // must not use this when using streams
+                                           // @#(&*@^$*@$% boost doc
     }
-
+    
     // if reaching here, readBuffer_ is empty
-    this->do_read_some(requestedSize_, dst_,
+    this->do_read_some(requestedSize_, dst_ + processed_,
         std::bind(&StreamReader::async_read_until_continue, this,
                   readId_, delimiter, _1, _2));
 
@@ -337,7 +340,8 @@ void StreamReader::async_read_until_continue(unsigned int readId,
                 os << data[j];
                 toBeCommited++;
             }
-            readBuffer_.commit(toBeCommited);
+            //readBuffer_.commit(toBeCommited); // must not use this when using streams
+                                                // @#(&*@^$*@$% boost doc
             processed_ += i;
             this->finish_read(err);
             return;
