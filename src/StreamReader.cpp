@@ -51,202 +51,13 @@ StreamReader::Ptr StreamReader::Create(StreamInterface::Ptr stream)
 
 void StreamReader::flush()
 {
+    readBuffer_.consume(readBuffer_.size());
     stream_->flush();
 }
 
 void StreamReader::reset()
 {
     stream_->reset();
-}
-
-void StreamReader::async_read_some(std::size_t count,
-                                   uint8_t* data,
-                                   Callback callback)
-{
-    if(readBuffer_.size() > 0) {
-        std::istream is(&readBuffer_);
-        char c = is.get();
-        int readCount = 0;
-        while(!is.eof() && readCount < count) {
-            data[readCount] = c;
-            readCount++;
-            c = is.get();
-        }
-        readBuffer_.consume(readCount);
-        if(readCount >= count) {
-            // readBuffer emptied.
-            // Defering callback execution to avoid deadlock
-            stream_->service()->post(
-                std::bind(callback, ErrorCode(), readCount));
-        }
-    }
-    else {
-        if(!this->dump_enabled()) {
-            stream_->async_read_some(count, data, callback);
-        }
-        else {
-            std::cout << "There !" << std::endl;
-            stream_->async_read_some(count, data,
-                std::bind(&StreamReader::dump_callback, this, callback, data, _1, _2));
-        }
-    }
-}
-
-void StreamReader::async_read(std::size_t count, uint8_t* data,
-                              Callback callback, unsigned int timeoutMillis)
-{
-    if(readId_ != 0) {
-        throw std::runtime_error("Another read was in progress : cannot call another read");
-    }
-
-    readCounter_++;
-    readId_        = readCounter_;
-    requestedSize_ = count;
-    processed_     = 0;
-    dst_           = data;
-    callback_      = callback;
-    
-    if(timeoutMillis > 0) {
-        timer_.expires_from_now(Millis(timeoutMillis));
-        timer_.async_wait(std::bind(&StreamReader::timeout_reached, this, readId_, _1));
-    }
-
-    this->async_read_some(requestedSize_, dst_,
-        std::bind(&StreamReader::async_read_continue, this, readId_, _1, _2));
-}
-
-void StreamReader::async_read_continue(unsigned int readId,
-                                       const ErrorCode& err,
-                                       std::size_t readCount)
-{
-    if(readId_ != readId) {
-        // probably a timeout was reached
-        return;
-    }
-
-    processed_ += readCount;
-    if(!err && processed_ < requestedSize_) {
-        this->async_read_some(requestedSize_ - processed_, dst_ + processed_,
-            std::bind(&StreamReader::async_read_continue, this, readId_, _1, _2));
-    }
-    else {
-        readId_ = 0;
-        timer_.cancel();
-        //callback_(err, processed_);
-        stream_->service()->post(std::bind(callback_, err, processed_));
-    }
-}
-
-void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
-{
-    if(readId != readId_) {
-        // timer abort probably failed
-        return;
-    }
-    
-    waiterNotified_ = true;
-    waiter_.notify_all();
-    readId_ = 0;
-    //callback_(err, processed_);
-    stream_->service()->post(std::bind(callback_, err, processed_));
-}
-
-std::size_t StreamReader::read(std::size_t count, uint8_t* data,
-                               unsigned int timeoutMillis)
-{
-    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
-
-    this->async_read(count, data, std::bind(&StreamReader::read_callback, this, _1, _2),
-                     timeoutMillis);
-
-    waiterNotified_ = false; // this protects against spurious wakeups.
-    waiter_.wait(lock, [&]{ return waiterNotified_; });
-
-    return processed_;
-}
-
-void StreamReader::read_callback(const ErrorCode& err, std::size_t readCount)
-{
-    waiterNotified_ = true;
-    waiter_.notify_all();
-}
-
-void StreamReader::async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
-                                    Callback callback, unsigned int timeoutMillis)
-{
-    if(readId_ != 0) {
-        throw std::runtime_error("Another read was in progress : cannot call another read");
-    }
-
-    readCounter_++;
-    readId_        = readCounter_;
-    requestedSize_ = maxSize;
-    processed_     = 0;
-    dst_           = data;
-    callback_      = callback;
-    
-    if(timeoutMillis > 0) {
-        timer_.expires_from_now(Millis(timeoutMillis));
-        timer_.async_wait(std::bind(&StreamReader::timeout_reached, this, readId_, _1));
-    }
-    
-    this->async_read_some(requestedSize_, dst_,
-        std::bind(&StreamReader::async_read_until_continue, this,
-                  readId_, delimiter, _1, _2));
-}
-
-void StreamReader::async_read_until_continue(unsigned int readId,
-                                             char delimiter,
-                                             const ErrorCode& err,
-                                             std::size_t readCount)
-{
-    if(readId_ != readId) {
-        // probably a timeout was reached
-        return;
-    }
-    
-    const uint8_t* data = dst_ + processed_;
-    int i;
-    for(i = 0; i < readCount; i++) {
-        if(data[i] == delimiter) {
-            i++;
-            int remaining = readCount - i;
-            std::ostream os(&readBuffer_);
-            for(; i < readCount; i++) {
-                os << data[i];
-            }
-            readBuffer_.commit(remaining);
-            break;
-        }
-    }
-
-    processed_ += i;
-    if(!err && processed_ < requestedSize_ && dst_[processed_ - 1] != delimiter) {
-        this->async_read_some(requestedSize_ - processed_, dst_ + processed_,
-            std::bind(&StreamReader::async_read_until_continue, this,
-                      readId_, delimiter, _1, _2));
-    }
-    else {
-        readId_ = 0;
-        timer_.cancel();
-        //callback_(err, processed_);
-        stream_->service()->post(std::bind(callback_, err, processed_));
-    }
-}
-
-std::size_t StreamReader::read_until(std::size_t maxSize, uint8_t* data,
-                                     char delimiter, unsigned int timeoutMillis)
-{
-    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
-
-    this->async_read_until(maxSize, data, delimiter,
-                           std::bind(&StreamReader::read_callback, this, _1, _2),
-                           timeoutMillis);
-
-    waiterNotified_ = false; // this protects against spurious wakeups.
-    waiter_.wait(lock, [&]{ return waiterNotified_; });
-
-    return processed_;
 }
 
 void StreamReader::enable_dump(const std::string& filename, bool appendMode)
@@ -278,7 +89,6 @@ void StreamReader::dump_callback(Callback callback, uint8_t* data,
                                  const ErrorCode& err, std::size_t readCount)
 {
     if(!err && this->dump_enabled()) {
-        std::cout << "HEre !" << std::endl;
         for(std::size_t i = 0; i < readCount; i++) {
             std::cout << data[i];
             rxDump_ << data[i];
@@ -286,6 +96,284 @@ void StreamReader::dump_callback(Callback callback, uint8_t* data,
         rxDump_.flush();
     }
     callback(err, readCount);
+}
+
+bool StreamReader::new_read(std::size_t requestedSize, uint8_t* data, Callback callback,
+                            unsigned int timeoutMillis)
+{
+    std::lock_guard<std::mutex> lock(readMutex_);
+    if(readId_ != 0) {
+        // device busy
+        return false;
+    }
+    
+    readCounter_++;
+    readId_        = readCounter_;
+    requestedSize_ = requestedSize;
+    processed_     = 0;
+    dst_           = data;
+    callback_      = callback;
+
+    if(timeoutMillis > 0) {
+        timer_.expires_from_now(Millis(timeoutMillis));
+        timer_.async_wait(std::bind(&StreamReader::timeout_reached, this, readId_, _1));
+    }
+
+    return true;
+}
+
+void StreamReader::finish_read(const ErrorCode& err)
+{
+    std::lock_guard<std::mutex> lock(readMutex_);
+    if(readId_ == 0) {
+        // No read to end (should not happend)
+        return;
+    }
+    readId_ = 0;
+    // This calls the user callback in an executor loop (avoid potential
+    // deadlock with the readMutex_if the user callback asks for another read).
+    stream_->service()->post(std::bind(callback_, err, processed_));
+    // from this moment, requestedSize_, processed_, dst_ and callback_ are
+    // devalidated and available for a new read.
+}
+
+/**
+ * Checks if the readId associated with the caller checks out with the current
+ * one saved in the readId_ attribute.
+ *
+ * This allows to potentially detect callbacks which are no longer relevant.
+ * (For example a read callback might be called after a timeout already
+ * happened. This callback needs either to generate an error or to be ignored).
+ */
+bool StreamReader::readid_ok(unsigned int readId) const
+{
+    std::lock_guard<std::mutex> lock(readMutex_);
+    return readId == readId_;
+}
+
+void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
+{
+    if(!readid_ok(readId)) {
+        return;
+    }
+    // If timeout was reached, a waiter might have been set
+    waiterNotified_ = true;
+    waiter_.notify_all();
+    this->finish_read(ErrorCode()); // error should be timeout but could not
+                                    // find how to make one.
+}
+
+/**
+ * This function reads data from the stream.
+ *
+ * If the readBuffer_ is not empty, it will read data from the readBuffer_
+ * until the requested size is full or the read buffer is empty. It then
+ * immediatly calls the user callback without trying to read from the
+ * underlying stream read.
+ *
+ * New data is read from the underlying stream only if the readBuffer_ was
+ * empty when this method was called.
+ */
+void StreamReader::do_read_some(std::size_t count, uint8_t* data,
+                                Callback callback)
+{
+    if(readBuffer_.size() > 0) {
+        // readBuffer_ not empty
+        std::istream is(&readBuffer_);
+        char c = is.get();
+        int readCount = 0;
+        while(!is.eof() && readCount < count) {
+            data[readCount] = c;
+            readCount++;
+            c = is.get();
+        }
+        readBuffer_.consume(readCount);
+        stream_->service()->post(std::bind(callback, ErrorCode(), readCount));
+    }
+    else {
+        if(!this->dump_enabled()) {
+            stream_->async_read_some(count, data, callback);
+        }
+        else {
+            stream_->async_read_some(count, data,
+                std::bind(&StreamReader::dump_callback, this, callback, data, _1, _2));
+        }
+    }
+}
+
+bool StreamReader::async_read_some(std::size_t count, uint8_t* data,
+                                   Callback callback, unsigned int timeoutMillis)
+{
+    if(!this->new_read(count, data, callback, timeoutMillis)) {
+        return false;
+    }
+
+    this->do_read_some(requestedSize_, dst_,
+        std::bind(&StreamReader::async_read_some_continue, this, readId_, _1, _2));
+
+    return true;
+}
+
+void StreamReader::async_read_some_continue(unsigned int readId,
+                                            const ErrorCode& err, std::size_t readCount)
+{
+    if(!readid_ok(readId)) {
+        return;
+    }
+    processed_ = readCount;
+    this->finish_read(err);
+}
+
+bool StreamReader::async_read(std::size_t count, uint8_t* data,
+                              Callback callback, unsigned int timeoutMillis)
+{
+    if(!this->new_read(count, data, callback, timeoutMillis)) {
+        return false;
+    }
+
+    this->do_read_some(requestedSize_, dst_,
+        std::bind(&StreamReader::async_read_continue, this, readId_, _1, _2));
+
+    return true;
+}
+
+void StreamReader::async_read_continue(unsigned int readId, const ErrorCode& err,
+                                 std::size_t readCount)
+{
+    if(!readid_ok(readId)) {
+        // probably a timeout was reached
+        return;
+    }
+
+    processed_ += readCount;
+    if(!err && processed_ < requestedSize_) {
+        this->do_read_some(requestedSize_ - processed_, dst_ + processed_,
+            std::bind(&StreamReader::async_read_continue, this, readId, _1, _2));
+    }
+    else {
+        this->finish_read(err);
+    }
+}
+
+std::size_t StreamReader::read(std::size_t count, uint8_t* data,
+                               unsigned int timeoutMillis)
+{
+    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
+
+    if(!this->async_read(count, data,
+                         std::bind(&StreamReader::read_callback, this, _1, _2),
+                         timeoutMillis))
+    {
+        // device probably busy
+        return 0;
+    }
+
+    waiterNotified_ = false; // this protects against spurious wakeups.
+    waiter_.wait(lock, [&]{ return waiterNotified_; });
+
+    return processed_;
+}
+
+void StreamReader::read_callback(const ErrorCode& err, std::size_t readCount)
+{
+    // finish read was already called through the async_read primitive
+    waiterNotified_ = true;
+    waiter_.notify_all();
+}
+
+bool StreamReader::async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+                                    Callback callback, unsigned int timeoutMillis)
+{
+    if(!this->new_read(maxSize, data, callback, timeoutMillis)) {
+        return false;
+    }
+    
+    // First checking if delimiter in buffer
+    if(readBuffer_.size() > 0) {
+        // readBuffer_ not empty
+        std::istream is(&readBuffer_);
+        char c = is.get();
+        while(!is.eof()) {
+            dst_[processed_] = c;
+            processed_++;
+            if(c == delimiter || processed_ >= requestedSize_) {
+                // delimiter found or maximum user buffer size reached
+                readBuffer_.consume(processed_);
+                this->finish_read(ErrorCode());
+                return true;
+            }
+            c = is.get();
+        }
+        readBuffer_.consume(processed_);
+    }
+
+    // if reaching here, readBuffer_ is empty
+    this->do_read_some(requestedSize_, dst_,
+        std::bind(&StreamReader::async_read_until_continue, this,
+                  readId_, delimiter, _1, _2));
+
+    return true;
+}
+
+void StreamReader::async_read_until_continue(unsigned int readId,
+                                             char delimiter,
+                                             const ErrorCode& err,
+                                             std::size_t readCount)
+{
+    if(!readid_ok(readId)) {
+        // probably a timeout was reached
+        return;
+    }
+
+    const uint8_t* data = dst_ + processed_;
+    int i = 0;
+    for(; i < readCount; i++) {
+        if(data[i] == delimiter) {
+            // delimiter was found. Saving remaining data in readBuffer_
+            i++;
+            std::ostream os(&readBuffer_);
+            unsigned int toBeCommited = 0;
+            for(int j = i; j < readCount; j++) {
+                os << data[j];
+                toBeCommited++;
+            }
+            readBuffer_.commit(toBeCommited);
+            processed_ += i;
+            this->finish_read(err);
+            return;
+        }
+    }
+
+    // delimiter was not found.
+    processed_ += i;
+    if(err || processed_ >= requestedSize_) {
+        this->finish_read(err);
+    }
+    else {
+        // delimiter not found and no error. Continuing read.
+        this->do_read_some(requestedSize_ - processed_, dst_ + processed_,
+            std::bind(&StreamReader::async_read_until_continue, this,
+                      readId, delimiter, _1, _2));
+    }
+}
+
+std::size_t StreamReader::read_until(std::size_t maxSize, uint8_t* data,
+                                     char delimiter, unsigned int timeoutMillis)
+{
+    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
+
+    if(!this->async_read_until(maxSize, data, delimiter,
+                               std::bind(&StreamReader::read_callback, this, _1, _2),
+                               timeoutMillis))
+    {
+        // device probably busy
+        return 0;
+    }
+
+    waiterNotified_ = false; // this protects against spurious wakeups.
+    waiter_.wait(lock, [&]{ return waiterNotified_; });
+
+    return processed_;
 }
 
 } //namespace asio

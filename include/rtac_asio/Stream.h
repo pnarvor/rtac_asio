@@ -76,12 +76,12 @@ class Stream
     void reset();
     bool is_open() const { return reader_.stream()->is_open(); }
 
-    void async_read_some(std::size_t count, uint8_t* data,
+    bool async_read_some(std::size_t count, uint8_t* data,
                          Callback callback);
     void async_write_some(std::size_t count, const uint8_t* data,
                           Callback callback);
 
-    void async_read(std::size_t count, uint8_t* data, Callback callback,
+    bool async_read(std::size_t count, uint8_t* data, Callback callback,
                     unsigned int timeoutMillis = 0);
     void async_write(std::size_t count, const uint8_t* data,
                      Callback callback, unsigned int timeoutMillis = 0);
@@ -91,7 +91,7 @@ class Stream
     std::size_t write(std::size_t count, const uint8_t* data,
                       unsigned int timeoutMillis = 0);
 
-    void async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+    bool async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
                           Callback callback, unsigned int timeoutMillis = 0);
     std::size_t read_until(std::size_t maxSize, uint8_t* data,
                            char delimiter, unsigned int timeoutMillis = 0);

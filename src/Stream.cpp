@@ -81,10 +81,9 @@ void Stream::reset()
     reader_.reset();
 }
 
-void Stream::async_read_some(std::size_t count, uint8_t* data,
-                     Callback callback)
+bool Stream::async_read_some(std::size_t count, uint8_t* data, Callback callback)
 {
-    reader_.async_read_some(count, data, callback);
+    return reader_.async_read_some(count, data, callback);
 }
 
 void Stream::async_write_some(std::size_t count, const uint8_t* data,
@@ -93,10 +92,10 @@ void Stream::async_write_some(std::size_t count, const uint8_t* data,
     writer_.async_write_some(count, data, callback);
 }
 
-void Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
+bool Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
                         unsigned int timeoutMillis)
 {
-    reader_.async_read(count, data, callback, timeoutMillis);
+    return reader_.async_read(count, data, callback, timeoutMillis);
 }
 
 void Stream::async_write(std::size_t count, const uint8_t* data,
@@ -117,10 +116,10 @@ std::size_t Stream::write(std::size_t count, const uint8_t* data,
     return writer_.write(count, data, timeoutMillis);
 }
 
-void Stream::async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+bool Stream::async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
                               Callback callback, unsigned int timeoutMillis)
 {
-    reader_.async_read_until(maxSize, data, delimiter, callback, timeoutMillis);
+    return reader_.async_read_until(maxSize, data, delimiter, callback, timeoutMillis);
 }
 
 std::size_t Stream::read_until(std::size_t maxSize, uint8_t* data,

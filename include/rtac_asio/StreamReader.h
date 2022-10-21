@@ -63,12 +63,13 @@ class StreamReader
 
     StreamInterface::Ptr stream_;
 
-    unsigned int readCounter_;
-    unsigned int readId_;
-    std::size_t  requestedSize_;
-    std::size_t  processed_;
-    uint8_t*     dst_;
-    Callback     callback_;
+    unsigned int       readCounter_;
+    unsigned int       readId_;
+    std::size_t        requestedSize_;
+    std::size_t        processed_;
+    uint8_t*           dst_;
+    Callback           callback_;
+    mutable std::mutex readMutex_;
 
     Timer timer_;
 
@@ -79,8 +80,8 @@ class StreamReader
 
     // This buffer is necessary only because of the read_until primitive.
     // However, to keep a continuous stream of data, it needs to be read from
-    // any read primitive. So it is read solely from the async_read_some method
-    // and "written" to solely by the async_read_until and read_until
+    // any read primitive. So it is read from the async_read_some method
+    // and written to solely by the async_read_until and read_until
     // primitives.
     ReadBuffer readBuffer_;
 
@@ -88,10 +89,21 @@ class StreamReader
     std::ofstream rxDump_;
 
     StreamReader(StreamInterface::Ptr stream);
+    
+    // these methods ensure that no new read request can be started while a
+    // request is still in progress.
+    bool new_read(std::size_t requestedSize, uint8_t* data, Callback callback,
+                  unsigned int timeoutMillis = 0);
+    void finish_read(const ErrorCode& err);
+    bool readid_ok(unsigned int readId) const;
+    void timeout_reached(unsigned int readId, const ErrorCode& err);
 
+    void do_read_some(std::size_t count, uint8_t* data, Callback callback);
+
+    void async_read_some_continue(unsigned int readId,
+                                  const ErrorCode& err, std::size_t readCount);
     void async_read_continue(unsigned int readId,
                              const ErrorCode& err, std::size_t readCount);
-    void timeout_reached(unsigned int readId, const ErrorCode& err);
     void read_callback(const ErrorCode& err, std::size_t readCount);
     void async_read_until_continue(unsigned int readId, char delimiter,
                                    const ErrorCode& err, std::size_t readCount);
@@ -110,24 +122,24 @@ class StreamReader
     void flush();
     void reset();
 
-    void async_read_some(std::size_t count, uint8_t* data,
-                         Callback callback);
+    void enable_dump(const std::string& filename="asio_rx.dump",
+                     bool appendMode = false);
+    void disable_dump();
+    bool dump_enabled() const { return rxDump_.is_open(); }
 
-    void async_read(std::size_t count, uint8_t* data, Callback callback,
+    bool async_read_some(std::size_t count, uint8_t* data,
+                         Callback callback, unsigned int timeoutMillis = 0);
+
+    bool async_read(std::size_t count, uint8_t* data, Callback callback,
                     unsigned int timeoutMillis = 0);
 
     std::size_t read(std::size_t count, uint8_t* data,
                      unsigned int timeoutMillis = 0);
 
-    void async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
+    bool async_read_until(std::size_t maxSize, uint8_t* data, char delimiter,
                           Callback callback, unsigned int timeoutMillis = 0);
     std::size_t read_until(std::size_t maxSize, uint8_t* data,
                            char delimiter, unsigned int timeoutMillis = 0);
-
-    void enable_dump(const std::string& filename="asio_rx.dump",
-                     bool appendMode = false);
-    void disable_dump();
-    bool dump_enabled() const { return rxDump_.is_open(); }
 };
 
 } //namespace asio
