@@ -86,10 +86,10 @@ bool Stream::async_read_some(std::size_t count, uint8_t* data, Callback callback
     return reader_.async_read_some(count, data, callback);
 }
 
-void Stream::async_write_some(std::size_t count, const uint8_t* data,
+bool Stream::async_write_some(std::size_t count, const uint8_t* data,
                               Callback callback)
 {
-    writer_.async_write_some(count, data, callback);
+    return writer_.async_write_some(count, data, callback);
 }
 
 bool Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
@@ -98,10 +98,10 @@ bool Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
     return reader_.async_read(count, data, callback, timeoutMillis);
 }
 
-void Stream::async_write(std::size_t count, const uint8_t* data,
+bool Stream::async_write(std::size_t count, const uint8_t* data,
                          Callback callback, unsigned int timeoutMillis)
 {
-    writer_.async_write(count, data, callback, timeoutMillis);
+    return writer_.async_write(count, data, callback, timeoutMillis);
 }
 
 std::size_t Stream::read(std::size_t count, uint8_t* data,

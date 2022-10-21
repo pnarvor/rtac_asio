@@ -78,12 +78,12 @@ class Stream
 
     bool async_read_some(std::size_t count, uint8_t* data,
                          Callback callback);
-    void async_write_some(std::size_t count, const uint8_t* data,
+    bool async_write_some(std::size_t count, const uint8_t* data,
                           Callback callback);
 
     bool async_read(std::size_t count, uint8_t* data, Callback callback,
                     unsigned int timeoutMillis = 0);
-    void async_write(std::size_t count, const uint8_t* data,
+    bool async_write(std::size_t count, const uint8_t* data,
                      Callback callback, unsigned int timeoutMillis = 0);
 
     std::size_t read(std::size_t count, uint8_t* data,

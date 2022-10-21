@@ -41,13 +41,21 @@ int main()
 
     std::cout << "Started" << std::endl;
     
-    //while(1) {
-    for(int i = 0; i < 5; i++) {
-        getchar();
-        
-        stream->async_write_some(msg.size(),
-                                 (const uint8_t*)msg.c_str(),
-                                 &write_callback);
+    //for(int i = 0; i < 5; i++) {
+    //    getchar();
+    //    
+    //    stream->async_write_some(msg.size(),
+    //                             (const uint8_t*)msg.c_str(),
+    //                             &write_callback);
+    //}
+    while(1) {
+        //getchar();
+        if(!stream->async_write_some(msg.size(),
+                                     (const uint8_t*)msg.c_str(),
+                                     &write_callback))
+        {
+            std::cout << "Device busy" << std::endl;
+        }
     }
 
     return 0;

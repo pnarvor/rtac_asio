@@ -61,12 +61,13 @@ class StreamWriter
 
     StreamInterface::Ptr stream_;
 
-    unsigned int   writeCounter_;
-    unsigned int   writeId_;
-    std::size_t    requestedSize_;
-    std::size_t    processed_;
-    const uint8_t* src_;
-    Callback       callback_;
+    unsigned int       writeCounter_;
+    unsigned int       writeId_;
+    std::size_t        requestedSize_;
+    std::size_t        processed_;
+    const uint8_t*     src_;
+    Callback           callback_;
+    mutable std::mutex writeMutex_;
 
     Timer timer_;
 
@@ -80,9 +81,20 @@ class StreamWriter
 
     StreamWriter(StreamInterface::Ptr stream);
 
-    void async_write_continue(unsigned int writeId,
-                             const ErrorCode& err, std::size_t writtenCount);
+    // these methods ensure that no new read request can be started while a
+    // request is still in progress.
+    bool new_write(std::size_t requestedSize, const uint8_t* data,
+                   Callback callback, unsigned int timeoutMillis = 0);
+    void finish_write(const ErrorCode& err);
+    bool writeid_ok(unsigned int writeId) const;
     void timeout_reached(unsigned int writeId, const ErrorCode& err);
+
+    void do_write_some(std::size_t count, const uint8_t* data, Callback callback);
+
+    void async_write_some_continue(unsigned int writeId,
+                                   const ErrorCode& err, std::size_t writtenCount);
+    void async_write_continue(unsigned int writeId,
+                              const ErrorCode& err, std::size_t writtenCount);
     void write_callback(const ErrorCode& err, std::size_t writtenCount);
     void dump_callback(Callback callback, const uint8_t* data,
                        const ErrorCode& err, std::size_t writtenCount);
@@ -99,19 +111,21 @@ class StreamWriter
     void flush();
     void reset();
 
-    void async_write_some(std::size_t count, const uint8_t* data,
-                          Callback callback);
-
-    void async_write(std::size_t count, const uint8_t* data,
-                     Callback callback, unsigned int timeoutMillis = 0);
-
-    std::size_t write(std::size_t count, const uint8_t* data,
-                      unsigned int timeoutMillis = 0);
-
     void enable_dump(const std::string& filename="asio_tx.dump",
                      bool appendMode = false);
     void disable_dump();
     bool dump_enabled() const { return txDump_.is_open(); }
+
+
+
+    bool async_write_some(std::size_t count, const uint8_t* data,
+                          Callback callback, unsigned int timeoutMillis = 0);
+
+    bool async_write(std::size_t count, const uint8_t* data,
+                     Callback callback, unsigned int timeoutMillis = 0);
+
+    std::size_t write(std::size_t count, const uint8_t* data,
+                      unsigned int timeoutMillis = 0);
 };
 
 } //namespace asio

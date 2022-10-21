@@ -59,99 +59,6 @@ void StreamWriter::reset()
     stream_->reset();
 }
 
-void StreamWriter::async_write_some(std::size_t count,
-                                    const uint8_t* data,
-                                    Callback callback)
-{
-    if(!this->dump_enabled()) {
-        stream_->async_write_some(count, data, callback);
-    }
-    else {
-        stream_->async_write_some(count, data,
-            std::bind(&StreamWriter::dump_callback, this,
-                      callback, data, _1, _2));
-    }
-}
-
-void StreamWriter::async_write(std::size_t count, const uint8_t* data,
-                               Callback callback, unsigned int timeoutMillis)
-{
-    if(writeId_ != 0) {
-        throw std::runtime_error("Another write was in progress : cannot call another write");
-    }
-
-    writeCounter_++;
-    writeId_        = writeCounter_;
-    requestedSize_ = count;
-    processed_     = 0;
-    src_           = data;
-    callback_      = callback;
-    
-    if(timeoutMillis > 0) {
-        timer_.expires_from_now(Millis(timeoutMillis));
-        timer_.async_wait(std::bind(&StreamWriter::timeout_reached, this, writeId_, _1));
-    }
-
-    this->async_write_some(requestedSize_, src_,
-        std::bind(&StreamWriter::async_write_continue, this, writeId_, _1, _2));
-}
-
-void StreamWriter::async_write_continue(unsigned int writeId,
-                                        const ErrorCode& err,
-                                        std::size_t writtenCount)
-{
-    if(writeId_ != writeId) {
-        // probably a timeout was reached
-        return;
-    }
-
-    processed_ += writtenCount;
-    if(!err && processed_ < requestedSize_) {
-        this->async_write_some(requestedSize_ - processed_, src_ + processed_,
-            std::bind(&StreamWriter::async_write_continue, this, writeId_, _1, _2));
-    }
-    else {
-        writeId_ = 0;
-        timer_.cancel();
-        //callback_(err, processed_);
-        stream_->service()->post(std::bind(callback_, err, processed_));
-    }
-}
-
-void StreamWriter::timeout_reached(unsigned int writeId, const ErrorCode& err)
-{
-    if(writeId != writeId_) {
-        // timer abort probably failed
-        return;
-    }
-    
-    waiterNotified_ = true;
-    waiter_.notify_all();
-    writeId_ = 0;
-    //callback_(err, processed_);
-    stream_->service()->post(std::bind(callback_, err, processed_));
-}
-
-std::size_t StreamWriter::write(std::size_t count, const uint8_t* data,
-                                unsigned int timeoutMillis)
-{
-    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
-
-    this->async_write(count, data, std::bind(&StreamWriter::write_callback, this, _1, _2),
-                     timeoutMillis);
-
-    waiterNotified_ = false; // this protects against spurious wakeups.
-    waiter_.wait(lock, [&]{ return waiterNotified_; });
-
-    return processed_;
-}
-
-void StreamWriter::write_callback(const ErrorCode& err, std::size_t writtenCount)
-{
-    waiterNotified_ = true;
-    waiter_.notify_all();
-}
-
 void StreamWriter::enable_dump(const std::string& filename, bool appendMode)
 {
     if(txDump_.is_open()) {
@@ -187,6 +94,166 @@ void StreamWriter::dump_callback(Callback callback, const uint8_t* data,
         txDump_.flush();
     }
     callback(err, writtenCount);
+}
+
+bool StreamWriter::new_write(std::size_t requestedSize, const uint8_t* data,
+                             Callback callback, unsigned int timeoutMillis)
+{
+    std::lock_guard<std::mutex> lock(writeMutex_);
+    if(writeId_ != 0) {
+        // device busy
+        return false;
+    }
+    
+    writeCounter_++;
+    writeId_        = writeCounter_;
+    requestedSize_ = requestedSize;
+    processed_     = 0;
+    src_           = data;
+    callback_      = callback;
+
+    if(timeoutMillis > 0) {
+        timer_.expires_from_now(Millis(timeoutMillis));
+        timer_.async_wait(std::bind(&StreamWriter::timeout_reached, this, writeId_, _1));
+    }
+
+    return true;
+}
+
+void StreamWriter::finish_write(const ErrorCode& err)
+{
+    std::lock_guard<std::mutex> lock(writeMutex_);
+    if(writeId_ == 0) {
+        // No write to end (should not happend)
+        return;
+    }
+    writeId_ = 0;
+    // This calls the user callback in an executor loop (avoid potential
+    // deadlock with the writeMutex_if the user callback asks for another write).
+    stream_->service()->post(std::bind(callback_, err, processed_));
+    // from this moment, requestedSize_, processed_, src_ and callback_ are
+    // devalidated and available for a new write.
+}
+
+/**
+ * Checks if the writeId associated with the caller checks out with the current
+ * one saved in the writeId_ attribute.
+ *
+ * This allows to potentially detect callbacks which are no longer relevant.
+ * (For example a write callback might be called after a timeout alwritey
+ * happened. This callback needs either to generate an error or to be ignored).
+ */
+bool StreamWriter::writeid_ok(unsigned int writeId) const
+{
+    std::lock_guard<std::mutex> lock(writeMutex_);
+    return writeId == writeId_;
+}
+
+void StreamWriter::timeout_reached(unsigned int writeId, const ErrorCode& err)
+{
+    if(!writeid_ok(writeId)) {
+        return;
+    }
+    // If timeout was reached, a waiter might have been set
+    waiterNotified_ = true;
+    waiter_.notify_all();
+    this->finish_write(ErrorCode()); // error should be timeout but could not
+                                     // find how to make one.
+}
+
+void StreamWriter::do_write_some(std::size_t count,
+                                 const uint8_t* data, Callback callback)
+{
+    if(!this->dump_enabled()) {
+        stream_->async_write_some(count, data, callback);
+    }
+    else {
+        stream_->async_write_some(count, data,
+            std::bind(&StreamWriter::dump_callback, this,
+                      callback, data, _1, _2));
+    }
+}
+
+bool StreamWriter::async_write_some(std::size_t count, const uint8_t* data,
+                                    Callback callback, unsigned int timeoutMillis)
+{
+    if(!this->new_write(count, data, callback, timeoutMillis)) {
+        return false;
+    }
+
+    this->do_write_some(requestedSize_, src_,
+        std::bind(&StreamWriter::async_write_some_continue, this, writeId_, _1, _2));
+
+    return true;
+}
+
+void StreamWriter::async_write_some_continue(unsigned int writeId,
+                                             const ErrorCode& err,
+                                             std::size_t writtenCount)
+{
+    if(!writeid_ok(writeId)) {
+        return;
+    }
+    processed_ = writtenCount;
+    this->finish_write(err);
+}
+
+bool StreamWriter::async_write(std::size_t count, const uint8_t* data,
+                               Callback callback, unsigned int timeoutMillis)
+{
+    if(!this->new_write(count, data, callback, timeoutMillis)) {
+        return false;
+    }
+
+    this->do_write_some(requestedSize_, src_,
+        std::bind(&StreamWriter::async_write_continue, this, writeId_, _1, _2));
+
+    return true;
+}
+
+void StreamWriter::async_write_continue(unsigned int writeId,
+                                        const ErrorCode& err,
+                                        std::size_t writtenCount)
+{
+    if(!writeid_ok(writeId)) {
+        // probably a timeout was reached
+        return;
+    }
+
+    processed_ += writtenCount;
+    if(!err && processed_ < requestedSize_) {
+        this->do_write_some(requestedSize_ - processed_, src_ + processed_,
+            std::bind(&StreamWriter::async_write_continue, this, writeId, _1, _2));
+    }
+    else {
+        this->finish_write(err);
+    }
+}
+
+std::size_t StreamWriter::write(std::size_t count, const uint8_t* data,
+                                unsigned int timeoutMillis)
+{
+    std::unique_lock<std::mutex> lock(mutex_); // will release mutex when out of scope
+
+    if(!this->async_write(count, data,
+                          std::bind(&StreamWriter::write_callback, this, _1, _2),
+                          timeoutMillis))
+    {
+        // device probably busy
+        return 0;
+    }
+
+    waiterNotified_ = false; // this protects against spurious wakeups.
+    waiter_.wait(lock, [&]{ return waiterNotified_; });
+
+    return processed_;
+}
+
+void StreamWriter::write_callback(const ErrorCode& err, std::size_t writtenCount)
+{
+    // finish write was already called through the async_write primitive
+    waiterNotified_ = true;
+    waiter_.notify_all();
 }
 
 } //namespace asio
