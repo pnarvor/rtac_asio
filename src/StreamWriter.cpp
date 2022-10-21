@@ -71,9 +71,6 @@ void StreamWriter::async_write_some(std::size_t count,
             std::bind(&StreamWriter::dump_callback, this,
                       callback, data, _1, _2));
     }
-    if(!stream_->service()->is_running()) {
-        stream_->service()->start();
-    }
 }
 
 void StreamWriter::async_write(std::size_t count, const uint8_t* data,

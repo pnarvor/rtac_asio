@@ -27,35 +27,49 @@
 
 
 #include <rtac_asio/AsyncService.h>
-#include <boost/bind.hpp>
 #include <functional>
 
 namespace rtac { namespace asio {
 
 AsyncService::AsyncService() :
-    service_(std::make_unique<IoService>()),
     thread_(nullptr),
-    isRunning_(false)
+    isRunning_(false),
+    timer_(service_)
 {}
 
 AsyncService::~AsyncService()
 {
     this->stop();
-    if(thread_) {
-        thread_->join();
-    }
-    thread_ = nullptr;
+}
+
+void AsyncService::timer_callback(const ErrorCode& err) const
+{
+    //std::cout << "==== Worker timeout guard ====" << std::endl;
+    timer_.expires_from_now(Millis(1000));
+    timer_.async_wait(std::bind(&AsyncService::timer_callback, this, std::placeholders::_1));
 }
 
 void AsyncService::run()
 {
-    if(this->is_running()) return;
-    
-    isRunning_ = true;
+    {
+        std::unique_lock<std::mutex> lock(waitMutex_);
+        if(isRunning_) {
+            return;
+        }
+        isRunning_ = true;
+        waiterWasNotified_ = true;
+        //lock.unlock(); // ?
+        waitStart_.notify_one();
+    }
     try {
-        //service_->reset();
-        service_->restart();
-        service_->run();
+        //service_.reset(); // deprecated
+        service_.restart();
+
+        // Giving work to the service to prevent it from stopping right away
+        timer_.cancel();
+        this->timer_callback(ErrorCode());
+
+        service_.run();
     }
     catch(...) {
         // This ensures isRunning_ is set to false if service::run() throws an
@@ -63,30 +77,56 @@ void AsyncService::run()
         isRunning_ = false;
         throw;
     }
-    isRunning_ = false;
+    {
+        isRunning_ = false;
+    }
 }
 
 bool AsyncService::is_running() const
 {
+    //std::lock_guard<std::mutex> lock(startMutex_); // necessary ?
     return isRunning_;
 }
 
 void AsyncService::start()
 {
-    if(this->is_running()) return;
+    std::lock_guard<std::mutex> lock(startMutex_);
+    if(isRunning_) {
+        return;
+    }
     if(thread_) {
+        service_.stop();
         thread_->join();
         thread_ = nullptr; // this is to force deletion of the old thread
     }
+
+    // this construct allows to ensure thread is started and isRunning_ is set
+    // to true before this function exits and release startMutex_. This
+    // protects from deadlock if another call to start was made in the
+    // meantime.
+    std::unique_lock<std::mutex> waiterLock(waitMutex_);
     thread_ = std::make_unique<std::thread>(std::bind(&AsyncService::run, this));
+    if(!thread_->joinable()) {
+        throw std::runtime_error("rtac::asio::AsyncService : could not start working thread");
+    }
+
+    // using waiterWasNotified_ instead of isRunning_, because isRunning_ may
+    // be reset to false too rapidly for the waiter to wakeup.
+    waiterWasNotified_ = false;
+    waitStart_.wait(waiterLock, [&]{ return waiterWasNotified_; });
 }
 
 void AsyncService::stop()
 {
-    if(!this->is_running()) return;
+    std::lock_guard<std::mutex> lock(startMutex_);
+
+    // thread MUST be joined in any case. Check of isRunning_ can be hurtfull
+    //if(!isRunning_) {
+    //    return;
+    //}
     
-    service_->stop();
-    if(thread_) {
+    service_.stop();
+    if(thread_ && thread_->joinable()) {
         thread_->join();
     }
     thread_ = nullptr;
@@ -94,7 +134,7 @@ void AsyncService::stop()
 
 void AsyncService::post(const std::function<void()>& function)
 {
-    boost::asio::post(*service_, function);
+    boost::asio::post(service_, function);
 }
 
 } //namespace asio

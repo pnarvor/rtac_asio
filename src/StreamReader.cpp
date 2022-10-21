@@ -89,9 +89,6 @@ void StreamReader::async_read_some(std::size_t count,
             stream_->async_read_some(count, data,
                 std::bind(&StreamReader::dump_callback, this, callback, data, _1, _2));
         }
-        if(!stream_->service()->is_running()) {
-            stream_->service()->start();
-        }
     }
 }
 

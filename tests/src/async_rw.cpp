@@ -40,14 +40,16 @@ int main()
     std::string data(1024, '\0');
 
     auto stream = Stream::CreateSerial("/dev/ttyACM0", 115200);
+    stream->start();
+    stream->enable_io_dump();
 
     stream->async_read(msg.size(), (uint8_t*)data.c_str(),
                        std::bind(&read_callback, stream, &data, _1, _2));
 
     std::cout << "Started" << std::endl;
     
-    //while(1) {
-    for(int i = 0; i < 5; i++) {
+    while(1) {
+    //for(int i = 0; i < 5; i++) {
         getchar();
         stream->async_write(msg.size(), (const uint8_t*)msg.c_str(),
                             &write_callback);

@@ -33,6 +33,7 @@ int main()
     std::string data(1024, '\0');
 
     auto stream = Stream::CreateSerial("/dev/ttyACM0", 115200);
+    stream->start();
     stream->enable_io_dump();
 
     stream->async_read_some(data.size(), (uint8_t*)data.c_str(),
@@ -43,6 +44,7 @@ int main()
     //while(1) {
     for(int i = 0; i < 5; i++) {
         getchar();
+        
         stream->async_write_some(msg.size(),
                                  (const uint8_t*)msg.c_str(),
                                  &write_callback);

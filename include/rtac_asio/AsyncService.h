@@ -32,6 +32,7 @@
 #include <iostream>
 #include <thread>
 #include <memory>
+#include <mutex>
 
 #include <boost/asio.hpp>
 
@@ -44,15 +45,22 @@ class AsyncService
     using Ptr      = std::shared_ptr<AsyncService>;
     using ConstPtr = std::shared_ptr<const AsyncService>;
 
-    using IoService    = boost::asio::io_service;
-    using IoServicePtr = std::shared_ptr<IoService>;
+    using Timer     = boost::asio::deadline_timer;
+    using Millis    = boost::posix_time::milliseconds;
+    using ErrorCode = boost::system::error_code;
 
     protected:
     
-    IoServicePtr                  service_;
+    boost::asio::io_service       service_;
     std::unique_ptr<std::thread>  thread_;
     bool                          isRunning_;
+    mutable std::mutex            startMutex_;
+    mutable std::mutex            waitMutex_;
+    std::condition_variable       waitStart_;
+    bool                          waiterWasNotified_;
 
+    mutable Timer timer_; // this timer keeps the service busy (would stop otherwise)
+    void timer_callback(const ErrorCode& err) const;
 
     AsyncService();
 
@@ -62,13 +70,13 @@ class AsyncService
 
     ~AsyncService();
 
-          IoService& service()       { return *service_; }
-    const IoService& service() const { return *service_; }
+          boost::asio::io_service& service()       { return service_; }
+    const boost::asio::io_service& service() const { return service_; }
 
     void run();
 
     bool is_running() const;
-    bool stopped() const { return service_->stopped(); }
+    //bool stopped() const { return service_->stopped(); }
     void start();
     void stop();
     

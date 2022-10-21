@@ -13,6 +13,7 @@ int main()
     std::string data(1024, '\0');
 
     auto stream = Stream::CreateSerial("/dev/ttyACM0", 115200);
+    stream->start();
     std::cout << "Started" << std::endl;
     
     //while(1) {

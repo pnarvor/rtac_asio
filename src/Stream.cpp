@@ -63,6 +63,14 @@ Stream::Ptr Stream::CreateTCPClient(const std::string& remoteIP,
                                                   remoteIP, remotePort)));
 }
 
+void Stream::start()
+{
+    reader_.stream()->service()->start();
+    if(writer_.stream()->service().get() != reader_.stream()->service().get()) {
+        writer_.stream()->service()->start();
+    }
+}
+
 void Stream::flush()
 {
     reader_.flush();
