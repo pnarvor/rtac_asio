@@ -72,6 +72,7 @@ class Stream
     static Ptr CreateTCPClient(const std::string& remoteIP,
                                uint16_t remotePort);
     void start();
+    void stop();
     void flush();
     void reset();
     bool is_open() const { return reader_.stream()->is_open(); }

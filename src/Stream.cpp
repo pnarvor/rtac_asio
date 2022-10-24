@@ -71,6 +71,14 @@ void Stream::start()
     }
 }
 
+void Stream::stop()
+{
+    reader_.stream()->service()->stop();
+    if(writer_.stream()->service().get() != reader_.stream()->service().get()) {
+        writer_.stream()->service()->stop();
+    }
+}
+
 void Stream::flush()
 {
     reader_.flush();
