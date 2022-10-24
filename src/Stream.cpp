@@ -152,11 +152,18 @@ std::size_t Stream::read_until(std::size_t maxSize, uint8_t* data,
     return reader_.read_until(maxSize, data, delimiter, timeoutMillis);
 }
 
-void Stream::enable_io_dump(const std::string& rxFile, const std::string& txFile,
+void Stream::enable_io_dump(const std::string& rxFile,
+                            const std::string& txFile,
                             bool appendMode)
 {
     reader_.enable_dump(rxFile, appendMode);
     writer_.enable_dump(txFile, appendMode);
+}
+
+void Stream::disable_io_dump()
+{
+    reader_.disable_dump();
+    writer_.disable_dump();
 }
 
 } //namespace asio

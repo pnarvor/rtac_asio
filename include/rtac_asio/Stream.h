@@ -102,6 +102,7 @@ class Stream
     void enable_io_dump(const std::string& rxFile = "asio_rx.dump",
                         const std::string& txFile = "asio_tx.dump",
                         bool appendMode = false);
+    void disable_io_dump();
 };
 
 } //namespace asio
