@@ -73,6 +73,8 @@ class Stream
                                uint16_t remotePort);
     void start();
     void stop();
+    void run();
+
     void flush();
     void reset();
     bool is_open() const { return reader_.stream()->is_open(); }

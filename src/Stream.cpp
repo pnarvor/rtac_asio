@@ -28,9 +28,9 @@
 
 #include <rtac_asio/Stream.h>
 
-using namespace std::placeholders;
-
 namespace rtac { namespace asio {
+
+using namespace std::placeholders;
 
 Stream::Stream(StreamInterface::Ptr stream) :
     reader_(stream),
@@ -77,6 +77,22 @@ void Stream::stop()
     if(writer_.stream()->service().get() != reader_.stream()->service().get()) {
         writer_.stream()->service()->stop();
     }
+}
+
+void Stream::run()
+{
+    if(writer_.stream()->service().get() != reader_.stream()->service().get()) {
+        std::cerr << "rtac::asio::Stream::run : reader and writer do not share "
+                  << "the same AsyncService instance. Deadlock might happen."
+                  << std::endl;
+    }
+    if(reader_.stream()->service()->is_running()) {
+        std::ostringstream oss;
+        oss << "AsyncService is already running (probaly in another thread). "
+            << "Cannot start in the current thread.";
+        throw std::runtime_error(oss.str());
+    }
+    reader_.stream()->service()->run();
 }
 
 void Stream::flush()
