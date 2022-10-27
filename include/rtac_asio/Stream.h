@@ -83,9 +83,9 @@ class Stream
     bool is_open() const { return reader_.stream()->is_open(); }
 
     bool async_read_some(std::size_t count, uint8_t* data,
-                         Callback callback);
+                         Callback callback, unsigned int timeoutMillis = 0);
     bool async_write_some(std::size_t count, const uint8_t* data,
-                          Callback callback);
+                          Callback callback, unsigned int timeoutMillis = 0);
 
     bool async_read(std::size_t count, uint8_t* data, Callback callback,
                     unsigned int timeoutMillis = 0);
@@ -106,6 +106,12 @@ class Stream
                         const std::string& txFile = "asio_tx.dump",
                         bool appendMode = false);
     void disable_io_dump();
+
+    bool async_write_some(const std::string& data, Callback callback,
+                          unsigned int timeoutMillis = 0);
+    bool async_write(const std::string& data, Callback callback,
+                     unsigned int timeoutMillis = 0);
+    std::size_t write(const std::string& data, unsigned int timeoutMillis = 0);
 };
 
 } //namespace asio

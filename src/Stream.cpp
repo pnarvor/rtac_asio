@@ -105,15 +105,16 @@ void Stream::reset()
     reader_.reset();
 }
 
-bool Stream::async_read_some(std::size_t count, uint8_t* data, Callback callback)
+bool Stream::async_read_some(std::size_t count, uint8_t* data,
+                             Callback callback, unsigned int timeoutMillis)
 {
-    return reader_.async_read_some(count, data, callback);
+    return reader_.async_read_some(count, data, callback, timeoutMillis);
 }
 
 bool Stream::async_write_some(std::size_t count, const uint8_t* data,
-                              Callback callback)
+                              Callback callback, unsigned int timeoutMillis)
 {
-    return writer_.async_write_some(count, data, callback);
+    return writer_.async_write_some(count, data, callback, timeoutMillis);
 }
 
 bool Stream::async_read(std::size_t count, uint8_t* data, Callback callback,
@@ -164,6 +165,25 @@ void Stream::disable_io_dump()
 {
     reader_.disable_dump();
     writer_.disable_dump();
+}
+
+bool Stream::async_write_some(const std::string& data, Callback callback,
+                              unsigned int timeoutMillis)
+{
+    return this->async_write_some(data.size(), (const uint8_t*)data.c_str(),
+                                  callback, timeoutMillis);
+}
+
+bool Stream::async_write(const std::string& data, Callback callback,
+                         unsigned int timeoutMillis)
+{
+    return this->async_write(data.size(), (const uint8_t*)data.c_str(),
+                             callback, timeoutMillis);
+}
+
+std::size_t Stream::write(const std::string& data, unsigned int timeoutMillis)
+{
+    return this->write(data.size(), (const uint8_t*)data.c_str(), timeoutMillis);
 }
 
 } //namespace asio
