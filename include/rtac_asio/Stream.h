@@ -71,6 +71,9 @@ class Stream
                                uint16_t remotePort);
     static Ptr CreateTCPClient(const std::string& remoteIP,
                                uint16_t remotePort);
+    
+    AsyncService::Ptr service() const { return reader_.stream()->service(); }
+
     void start();
     void stop();
     void run();
