@@ -151,7 +151,7 @@ bool StreamReader::readid_ok(unsigned int readId) const
     return readId == readId_;
 }
 
-void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& /*err*/)
+void StreamReader::timeout_reached(unsigned int readId, const ErrorCode& err)
 {
     if(!readid_ok(readId)) {
         return;
@@ -181,7 +181,7 @@ void StreamReader::do_read_some(std::size_t count, uint8_t* data,
         // readBuffer_ not empty
         std::istream is(&readBuffer_);
         char c = is.get();
-        std::size_t readCount = 0;
+        int readCount = 0;
         while(!is.eof() && readCount < count) {
             data[readCount] = c;
             readCount++;
@@ -275,7 +275,7 @@ std::size_t StreamReader::read(std::size_t count, uint8_t* data,
     return processed_;
 }
 
-void StreamReader::read_callback(const ErrorCode& /*err*/, std::size_t /*readCount*/)
+void StreamReader::read_callback(const ErrorCode& err, std::size_t readCount)
 {
     // finish read was already called through the async_read primitive
     waiterNotified_ = true;
@@ -329,14 +329,14 @@ void StreamReader::async_read_until_continue(unsigned int readId,
     }
 
     const uint8_t* data = dst_ + processed_;
-    std::size_t i = 0;
+    int i = 0;
     for(; i < readCount; i++) {
         if(data[i] == delimiter) {
             // delimiter was found. Saving remaining data in readBuffer_
             i++;
             std::ostream os(&readBuffer_);
             unsigned int toBeCommited = 0;
-            for(std::size_t j = i; j < readCount; j++) {
+            for(int j = i; j < readCount; j++) {
                 os << data[j];
                 toBeCommited++;
             }
