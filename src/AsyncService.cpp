@@ -42,7 +42,7 @@ AsyncService::~AsyncService()
     this->stop();
 }
 
-void AsyncService::timer_callback(const ErrorCode& err) const
+void AsyncService::timer_callback(const ErrorCode& /*err*/) const
 {
     //std::cout << "==== Worker timeout guard ====" << std::endl;
     timer_.expires_from_now(Millis(1000));
