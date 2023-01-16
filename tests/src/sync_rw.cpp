@@ -8,7 +8,7 @@ using namespace rtac::asio;
 
 std::string msg = "Hello there !\n";
 
-void write_callback(const SerialStream::ErrorCode& err,
+void write_callback(const SerialStream::ErrorCode& /*err*/,
                     std::size_t writeCount)
 {
     std::cout << "Wrote data (" << writeCount << " bytes)." << std::endl;

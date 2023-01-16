@@ -37,11 +37,11 @@ using namespace rtac::asio;
 
 void read_callback(Stream::Ptr stream,
                    std::vector<uint8_t>* data,
-                   const Stream::ErrorCode& err,
+                   const Stream::ErrorCode& /*err*/,
                    std::size_t readCount)
 {
     if(readCount > 0) {
-        for(int i = 0; i < readCount; i++) {
+        for(std::size_t i = 0; i < readCount; i++) {
             cout << (*data)[i];
         }
     }

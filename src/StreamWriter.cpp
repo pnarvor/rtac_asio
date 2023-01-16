@@ -149,7 +149,7 @@ bool StreamWriter::writeid_ok(unsigned int writeId) const
     return writeId == writeId_;
 }
 
-void StreamWriter::timeout_reached(unsigned int writeId, const ErrorCode& err)
+void StreamWriter::timeout_reached(unsigned int writeId, const ErrorCode& /*err*/)
 {
     if(!writeid_ok(writeId)) {
         return;
@@ -249,7 +249,7 @@ std::size_t StreamWriter::write(std::size_t count, const uint8_t* data,
     return processed_;
 }
 
-void StreamWriter::write_callback(const ErrorCode& err, std::size_t writtenCount)
+void StreamWriter::write_callback(const ErrorCode& /*err*/, std::size_t /*writtenCount*/)
 {
     // finish write was already called through the async_write primitive
     waiterNotified_ = true;
