@@ -26,7 +26,7 @@
 cmake_minimum_required(VERSION 3.6)
 project(rtac_asio VERSION 1.0)
 
-option(BUILD_TESTS "Build unit tests" ON)
+option(BUILD_TESTS "Build unit tests" OFF)
 
 if(${CMAKE_VERSION} VERSION_LESS 3.8.2)
     message(WARNING "You are using a very old CMake version. This will work but please upgrade.")
