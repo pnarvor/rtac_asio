@@ -84,3 +84,5 @@ rtac_install_target(rtac_asio
 if(BUILD_TESTS)
     add_subdirectory(tests)
 endif()
+
+add_subdirectory(tests_riptide)
