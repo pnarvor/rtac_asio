@@ -277,6 +277,12 @@ std::size_t StreamReader::read(std::size_t count, uint8_t* data,
 
 void StreamReader::read_callback(const ErrorCode& /*err*/, std::size_t /*readCount*/)
 {
+    // This lock prevents a deadlock in StreamWriter::write. It is possible
+    // this callback is called before waiter_ started to wait. If it is the
+    // case, the waiter is notified before it started to wait and will never be
+    // notified in the future.
+    std::unique_lock<std::mutex> lock(mutex_);
+
     // finish read was already called through the async_read primitive
     waiterNotified_ = true;
     waiter_.notify_all();

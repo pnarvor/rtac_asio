@@ -251,6 +251,12 @@ std::size_t StreamWriter::write(std::size_t count, const uint8_t* data,
 
 void StreamWriter::write_callback(const ErrorCode& /*err*/, std::size_t /*writtenCount*/)
 {
+    // This lock prevents a deadlock in StreamWriter::write. It is possible
+    // this callback is called before waiter_ started to wait. If it is the
+    // case, the waiter is notified before it started to wait and will never be
+    // notified in the future.
+    std::unique_lock<std::mutex> lock(mutex_);
+
     // finish write was already called through the async_write primitive
     waiterNotified_ = true;
     waiter_.notify_all();
