@@ -17,7 +17,7 @@ with little tweaks. Feedback of use on other platforms would be appreciated.
 This package solely depends on boost. And you will need a compiler and CMake.
 
 ```
-sudo apt-get install -y libboost-thread-dev libboost-system-dev build-essential cmake
+sudo apt-get install -y libspdlog-dev libboost-thread-dev libboost-system-dev build-essential cmake
 ```
 
 ## Install rtac_asio

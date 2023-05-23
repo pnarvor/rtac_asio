@@ -341,10 +341,10 @@ void StreamReader::async_read_until_continue(unsigned int readId,
             // delimiter was found. Saving remaining data in readBuffer_
             i++;
             std::ostream os(&readBuffer_);
-            unsigned int toBeCommited = 0;
+            //unsigned int toBeCommited = 0; //unused
             for(std::size_t j = i; j < readCount; j++) {
                 os << data[j];
-                toBeCommited++;
+                //toBeCommited++;
             }
             //readBuffer_.commit(toBeCommited); // must not use this when using streams
                                                 // @#(&*@^$*@$% boost doc

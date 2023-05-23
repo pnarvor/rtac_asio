@@ -31,6 +31,7 @@ list(APPEND test_files
     src/read_until.cpp
     src/single_thread.cpp
     src/tcp_client01.cpp
+    src/string_stream.cpp
 )
 
 foreach(filename ${test_files})
