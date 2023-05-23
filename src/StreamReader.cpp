@@ -67,7 +67,7 @@ void StreamReader::enable_dump(const std::string& filename, bool appendMode)
         return;
     }
     
-    auto mode = std::ofstream::out;
+    auto mode = std::ofstream::out | std::ofstream::binary;
     if(appendMode) {
         mode = std::ofstream::app;
     }

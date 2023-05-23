@@ -68,6 +68,7 @@ int main()
 
     auto service = AsyncService::Create();
     auto stream = Stream::Create(StringStream::Create(service, 8192));
+    stream->enable_io_dump();
 
     //stream->async_write(msg.size(), (const uint8_t*)msg.c_str(),
     //                    std::bind(write_callback, stream, _1, _2));
